@@ -2,7 +2,7 @@
     "name": "quadrarecruit",
     "version": "0.1.0",
     "engines": {
-        "node": "18 || 20 || 22"
+        "node": "18 || 20 || 22 || 24"
     },
     "type": "module",
     "private": true,
@@ -11,7 +11,6 @@
         "@fluentui/react-components": "^9.61.6",
         "@fluentui/react-datepicker-compat": "^0.5.7",
         "@fluentui/react-icons": "^2.0.186",
-        "@tailwindcss/oxide-win32-x64-msvc": "^4.2.2",
         "@tailwindcss/vite": "^4.1.4",
         "axios": "^1.9.0",
         "date-fns": "^4.1.0",
