@@ -1,0 +1,76 @@
+      {/* Report Navigation Tabs matching global pill toggle design */}
+      <div style={{ display: "flex", flexWrap: "wrap" }}>
+        <QuadraPillToggle<TabKey>
+          options={[
+            { key: "assignments", label: "Who Holds What by Department", icon: <PeopleRegular /> },
+            { key: "purchases", label: "Monthly Purchases", icon: <BoxRegular /> },
+            { key: "stock", label: "Stock Status", icon: <BoxCheckmarkRegular /> },
+            { key: "insights", label: "Insights", icon: <DeveloperBoardRegular /> },
+          ]}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val)}
+        />
+      </div>
+
+      {/* ============================= TAB 1: Who Holds What by Department ============================= */}
+      {activeTab === "assignments" && (
+        <div style={{ display: "grid", gridTemplateColumns: "310px 1fr", gap: 20, alignItems: "start" }}>
+          
+          {/* Compact Left Widget: Assignments by Department */}
+          <div
+            className="quadra-glass-card"
+            style={{
+              padding: "20px 22px",
+              borderRadius: 16,
+              background: "#ffffff",
+              border: "1px solid #edf2f7",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Text weight="bold" size={300} style={{ color: "#0f172a", fontSize: 14 }}>
+                Department Share
+              </Text>
+              <Badge appearance="tint" color="informative" shape="rounded">
+                {overview.assignmentByDepartment.length} Depts
+              </Badge>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {overview.assignmentByDepartment.map((d) => {
+                const isSelected = selectedDepartment === d.Department;
+                const maxCount = overview.assignmentByDepartment[0]?.AssignedCount || 1;
+                const pct = Math.round((d.AssignedCount / maxCount) * 100);
+                return (
+                  <div
+                    key={d.Department}
+                    onClick={() => handleSelectDepartment(d.Department)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 10,
+                      background: isSelected ? "#eef6ff" : "transparent",
+                      border: isSelected ? "1px solid #b9ddf8" : "1px solid transparent",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    className="hover:bg-slate-50"
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text size={200} weight={isSelected ? "bold" : "medium"} style={{ color: isSelected ? "#007ed5" : "#334155", fontSize: 12.5 }}>
+                        {d.Department}
+                      </Text>
+                      <Text size={200} weight="bold" style={{ color: isSelected ? "#007ed5" : "#0f172a", fontSize: 12.5 }}>
+                        {d.AssignedCount}
+                      </Text>
+                    </div>
+                    <div style={{ width: "100%", height: 5, background: "#e2e8f0", borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: isSelected ? "#007ed5" : "#94a3b8", borderRadius: 999 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>

@@ -1,0 +1,726 @@
+.fui-FluentProvider,
+#fluent-provider,
+#quadra-shared-portal-root {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+#spinner {
+  margin: 100;
+}
+
+/* Fix Combobox in Dialog */
+.fui-Combobox__listbox {
+  z-index: 1000000 !important;
+  background: white !important;
+}
+
+.fui-Portal {
+  z-index: 1000000 !important;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Quadra People Signature Design System & Shell */
+.asset-app-root {
+  height: 100vh;
+  width: 100%;
+  background: transparent !important;
+  color: #1e293b;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', Roboto, sans-serif;
+}
+
+.asset-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Sidebar - Pure solid white design, no background blending */
+.asset-sidebar {
+  width: 68px;
+  min-width: 68px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 2px 0 10px rgba(15, 23, 42, 0.04);
+  z-index: 30;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.asset-sidebar-expanded {
+  width: 254px;
+  min-width: 254px;
+}
+
+.asset-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 64px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid #E2E8F0;
+  background: transparent;
+  cursor: pointer;
+  color: #1e293b;
+  overflow: hidden;
+  transition: background 0.15s ease;
+}
+
+.asset-brand:hover {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.asset-brand img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  box-shadow: 0 2px 6px rgba(0, 126, 213, 0.15);
+}
+
+.asset-brand span {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+}
+
+.asset-sidebar-label {
+  padding: 16px 16px 6px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+}
+
+.asset-sidebar-expanded .asset-sidebar-label {
+  text-align: left;
+}
+
+.asset-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  overflow-y: auto;
+}
+
+.asset-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 42px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.asset-sidebar-expanded .asset-nav-item {
+  justify-content: flex-start;
+}
+
+.asset-nav-item:hover {
+  background: #f1f5f9;
+  color: #007ed5;
+}
+
+.asset-nav-item-active {
+  background: #eef6ff !important;
+  border-color: #bae6fd !important;
+  color: #007ed5 !important;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 126, 213, 0.1);
+}
+
+.asset-nav-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.asset-nav-item span {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-sidebar-user {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+}
+
+.asset-sidebar-expanded .asset-sidebar-user {
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.asset-sidebar-user strong,
+.asset-sidebar-user small {
+  display: block;
+  white-space: nowrap;
+}
+
+.asset-sidebar-user strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.asset-sidebar-user small {
+  margin-top: 1px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+/* Main Section with ambient background exposure */
+.asset-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.asset-main > .fui-FluentProvider {
+  width: 100%;
+  height: 100%;
+}
+
+/* Transparent top header exposing ambient canvas */
+.asset-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  height: 64px;
+  padding: 0 28px;
+  border-bottom: 1px solid #E2E8F0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 20;
+}
+
+.asset-sidebar-toggle {
+  margin-right: 12px;
+}
+
+.asset-mobile-toggle {
+  display: none;
+  border: 0;
+  background: transparent;
+  font-size: 21px;
+  cursor: pointer;
+}
+
+.asset-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.asset-breadcrumb span {
+  color: #cbd5e1;
+  font-size: 16px;
+}
+
+.asset-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.asset-search-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.asset-search-pill:hover {
+  border-color: #007ed5;
+  color: #007ed5;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 126, 213, 0.12);
+  transform: translateY(-1px);
+}
+
+.asset-search-pill svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Content Viewport with transparent background to display AssetBg.png */
+.asset-content {
+  position: relative;
+  z-index: 4;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 24px 32px 48px;
+  background: transparent;
+  scroll-behavior: smooth;
+}
+
+/* Quadra People Glass & Surface Tokens */
+.quadra-glass-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 10px 28px -4px rgba(15, 23, 42, 0.05), 0 2px 8px -1px rgba(15, 23, 42, 0.02) !important;
+  border-radius: 16px !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.quadra-glass-card:hover {
+  box-shadow: 0 14px 34px -4px rgba(0, 126, 213, 0.09), 0 4px 12px -1px rgba(15, 23, 42, 0.03) !important;
+}
+
+.quadra-chip-pill {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+.quadra-chip-pill:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #b9ddf8;
+  box-shadow: 0 4px 12px rgba(0, 126, 213, 0.08);
+}
+
+.asset-mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .asset-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    width: 238px;
+    min-width: 238px;
+    transition: transform 0.25s ease;
+  }
+  .asset-sidebar-mobile {
+    transform: translateX(0);
+  }
+  .asset-sidebar-toggle {
+    display: none;
+  }
+  .asset-mobile-toggle {
+    display: block;
+    margin-right: 12px;
+  }
+  .asset-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+  }
+  .asset-header {
+    padding: 0 16px;
+  }
+  .asset-content {
+    padding: 16px 14px 28px;
+  }
+  .asset-search-pill span {
+    display: none;
+  }
+  .asset-search-pill {
+    padding: 7px;
+  }
+}
+
+/* ==========================================================
+   TOPBAR SEARCH & ROLE SWITCHER (Quadra Design System)
+   ========================================================== */
+.asset-topbar-center {
+  flex: 1;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.asset-topbar-search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 4px 12px 4px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.asset-topbar-search-box:focus-within {
+  border-color: #007ed5;
+  box-shadow: 0 0 0 3px rgba(0, 126, 213, 0.12);
+}
+
+.asset-topbar-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: #1e293b;
+  min-width: 80px;
+}
+
+.asset-topbar-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.asset-topbar-scope-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.asset-topbar-search-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  margin-left: 6px;
+  transition: color 0.15s;
+}
+
+.asset-topbar-search-btn:hover {
+  color: #007ed5;
+}
+
+/* Role Switcher Pill */
+.asset-role-switcher-container {
+  position: relative;
+}
+
+.asset-role-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1.5px solid #007ed5;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #007ed5;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 126, 213, 0.1);
+  transition: all 0.2s ease;
+}
+
+.asset-role-btn:hover {
+  background: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(0, 126, 213, 0.18);
+}
+
+.asset-role-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.role-badge-admin {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.role-badge-manager {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.role-badge-hr {
+  background: #fef3c7;
+  color: #b45309;
+}
+.role-badge-employee {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.asset-role-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 240px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
+  padding: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: quadraFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.asset-role-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  width: 100%;
+}
+
+.asset-role-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.asset-role-menu-item.active {
+  background: #eef6ff;
+}
+
+.asset-role-item-info strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.asset-role-item-info small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Pill Calendar View Button */
+.quadra-btn-calendar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px !important;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.quadra-btn-calendar:hover {
+  background: #f8fafc;
+  border-color: #007ed5;
+  color: #007ed5;
+  box-shadow: 0 2px 8px rgba(0, 126, 213, 0.12);
+}
+
+/* Slide-Over Right Drawer Overlay */
+.quadra-slideover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  animation: quadraFadeIn 0.2s ease-out;
+}
+
+/* Fluent UI Overlay Drawer Background Fix - ensure background is never hidden by opaque white layer */
+body > .fui-FluentProvider,
+body > div[class*="fui-FluentProvider"],
+.fui-Portal,
+.fui-Portal > .fui-FluentProvider,
+#quadra-shared-portal-root,
+#quadra-shared-portal-root > .fui-FluentProvider {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.fui-OverlayDrawer__backdrop {
+  background-color: rgba(15, 23, 42, 0.35) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.quadra-slideover-panel {
+  width: 100%;
+  max-width: 620px;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -10px 0 35px rgba(15, 23, 42, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: quadraSlideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes quadraSlideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes quadraFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Calendar Button Pill Style */
+.quadra-btn-calendar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+}
+
+.quadra-btn-calendar:hover {
+  background: #f8fafc;
+  border-color: #818cf8;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+/* ==========================================================================
+   Quadra Pill Toggle - Global Standard (Matching Screenshot 1)
+   Container: Rounded full pill (9999px), frosted / light background
+   Active Pill: Pure white, elevated soft shadow, bold brand blue (#007ED5)
+   Inactive: Transparent background, bold slate (#64748B)
+   ========================================================================== */
+.quadra-pill-toggle-container {
+  display: inline-flex;
+  align-items: center;
+  background: #EEF2F6;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 9999px;
+  padding: 4px;
+  gap: 4px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.quadra-pill-toggle-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.quadra-pill-toggle-item:hover:not(.quadra-pill-toggle-item-active) {
+  color: #1E293B;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.quadra-pill-toggle-item-active {
+  background: #FFFFFF !important;
+  color: #007ED5 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.quadra-pill-toggle-sm .quadra-pill-toggle-item {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.quadra-pill-toggle-lg .quadra-pill-toggle-item {
+  padding: 10px 28px;
+  font-size: 15px;
+}
+

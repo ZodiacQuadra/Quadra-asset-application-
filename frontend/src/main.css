@@ -1,0 +1,67 @@
+@import url("https://fonts.googleapis.com/css2?family=Raleway:wght@500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap");
+@import "tailwindcss";
+
+/* Font smoothing styles and defaults */
+body {
+  font-family: "Sora", sans-serif !important;
+  -webkit-font-smoothing: antialiased; /* For Chrome, Safari, and newer Edge */
+  -moz-osx-font-smoothing: grayscale; /* For Firefox */
+  text-rendering: optimizeLegibility; /* Optimum text rendering*/
+  overflow: auto;
+}
+
+*,
+.fontRaleway {
+  font-family: "Sora", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+:root {
+  --gradient-text: linear-gradient(to right, #a78bfa, #ec4899, #f43f5e);
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fluent UI Portal & Overlay Drawer background fix - guarantee portaled container never paints white */
+body > .fui-FluentProvider,
+body > div[class*="fui-FluentProvider"],
+.fui-Portal,
+.fui-Portal > .fui-FluentProvider,
+#quadra-shared-portal-root,
+#quadra-shared-portal-root > .fui-FluentProvider {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* FluentUI Drawer panel (the slide-out panel itself) */
+.fui-Drawer,
+.fui-OverlayDrawer,
+.fui-InlineDrawer,
+.fui-DrawerHeader,
+.fui-DrawerBody,
+.fui-DrawerFooter {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.fui-OverlayDrawer {
+  box-shadow: -10px 0 40px rgba(15, 23, 42, 0.18) !important;
+  border-left: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.fui-DrawerHeader {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.fui-OverlayDrawer__backdrop {
+  background-color: rgba(15, 23, 42, 0.35) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+

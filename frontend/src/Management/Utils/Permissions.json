@@ -1,0 +1,19 @@
+{
+  "recruiting": {
+    "jobPosting": "none",
+    "hiringTemplate": "none",
+    "location": "none",
+    "department": "none"
+  },
+  "jdManagement": {
+    "manageJD": "none"
+  },
+  "dashboards": {
+    "recruitDashboard": "none",
+    "hiringDashboard": "none"
+  },
+  "interviews": {
+    "canApproveCandidate": false,
+    "canManageInterviews": false
+  }
+}
