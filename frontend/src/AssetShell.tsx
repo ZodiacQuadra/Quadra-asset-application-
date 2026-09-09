@@ -7,12 +7,15 @@ import {
   BoxToolboxRegular,
   Checkmark20Filled,
   ChevronDown16Regular,
+  ChevronUp16Regular,
   ChevronDown20Regular,
   DocumentAdd24Filled,
   DocumentAdd24Regular,
   Grid20Filled,
   Grid20Regular,
   GridDotsFilled,
+  ChartMultiple20Filled,
+  ChartMultiple20Regular,
   PanelLeftRegular,
   PanelRightRegular,
   People20Filled,
@@ -47,9 +50,8 @@ const roleNavItems: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", path: "/Asset/dashboard", icon: Grid20Regular, activeIcon: Grid20Filled },
     { label: "Asset Inventory", path: "/Asset/inventory", icon: BoxToolboxRegular, activeIcon: BoxToolboxFilled },
     { label: "Request", path: "/Asset/admin-approval", icon: ApprovalsApp24Regular, activeIcon: ApprovalsApp24Filled },
-    { label: "Search", path: "/Asset/search", icon: Search20Regular, activeIcon: Search20Filled },
     { label: "Employee List", path: "/Asset/employees", icon: People20Regular, activeIcon: People20Filled },
-    { label: "Report", path: "/Asset/reports", icon: Grid20Regular, activeIcon: Grid20Filled },
+    { label: "Report", path: "/Asset/reports", icon: ChartMultiple20Regular, activeIcon: ChartMultiple20Filled },
   ],
   manager: [
     { label: "Dashboard", path: "/Asset/manager-dashboard", icon: Grid20Regular, activeIcon: Grid20Filled },
@@ -90,6 +92,16 @@ function isActivePath(currentPath: string, itemPath: string) {
   return currentPath.startsWith(`${itemPath}/`);
 }
 
+const SEARCH_SCOPES = [
+  { key: "inventory", label: "Inventory" },
+  { key: "maintenances", label: "Maintenances" },
+  { key: "warranties", label: "Warranties" },
+  { key: "persons", label: "Persons" },
+  { key: "vendors", label: "Vendors" },
+] as const;
+
+export type SearchScopeKey = (typeof SEARCH_SCOPES)[number]["key"];
+
 export default function AssetShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -100,9 +112,12 @@ export default function AssetShell({ children }: { children: ReactNode }) {
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [appLauncherOpen, setAppLauncherOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [searchScope, setSearchScope] = useState<SearchScopeKey>("inventory");
+  const [searchScopeOpen, setSearchScopeOpen] = useState(false);
 
   const roleMenuRef = useRef<HTMLDivElement>(null);
   const appLauncherRef = useRef<HTMLDivElement>(null);
+  const searchScopeRef = useRef<HTMLDivElement>(null);
 
   // Close menus on click outside
   useEffect(() => {
@@ -113,18 +128,26 @@ export default function AssetShell({ children }: { children: ReactNode }) {
       if (appLauncherRef.current && !appLauncherRef.current.contains(event.target as Node)) {
         setAppLauncherOpen(false);
       }
+      if (searchScopeRef.current && !searchScopeRef.current.contains(event.target as Node)) {
+        setSearchScopeOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keep globalSearch synced with query params when on /Asset/search
+  // Keep globalSearch and searchScope synced with query params when on /Asset/search
   useEffect(() => {
     if (location.pathname === "/Asset/search") {
       const sp = new URLSearchParams(location.search);
       const q = sp.get("q") || sp.get("keyword") || "";
       if (q !== globalSearch) {
         setGlobalSearch(q);
+      }
+      const raw = (sp.get("scope") || "inventory").toLowerCase();
+      const rawScope = (raw === "customers" ? "vendors" : raw) as SearchScopeKey;
+      if (SEARCH_SCOPES.some((s) => s.key === rawScope) && rawScope !== searchScope) {
+        setSearchScope(rawScope);
       }
     }
   }, [location.pathname, location.search]);
@@ -178,11 +201,44 @@ export default function AssetShell({ children }: { children: ReactNode }) {
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (globalSearch.trim()) {
-      navigate(`/Asset/search?q=${encodeURIComponent(globalSearch.trim())}`);
-    } else {
-      navigate("/Asset/search");
+    const sp = new URLSearchParams();
+    if (searchScope && searchScope !== "inventory") {
+      sp.set("scope", searchScope);
     }
+    if (globalSearch.trim()) {
+      sp.set("q", globalSearch.trim());
+    }
+    const qStr = sp.toString();
+    navigate(`/Asset/search${qStr ? `?${qStr}` : ""}`);
+    setSearchScopeOpen(false);
+  };
+
+  const handleGoToSearch = () => {
+    if (location.pathname !== "/Asset/search") {
+      const sp = new URLSearchParams();
+      if (searchScope && searchScope !== "inventory") {
+        sp.set("scope", searchScope);
+      }
+      if (globalSearch.trim()) {
+        sp.set("q", globalSearch.trim());
+      }
+      const qStr = sp.toString();
+      navigate(`/Asset/search${qStr ? `?${qStr}` : ""}`);
+    }
+  };
+
+  const handleSelectScope = (scopeKey: SearchScopeKey) => {
+    setSearchScope(scopeKey);
+    setSearchScopeOpen(false);
+    const sp = new URLSearchParams();
+    if (scopeKey !== "inventory") {
+      sp.set("scope", scopeKey);
+    }
+    if (globalSearch.trim()) {
+      sp.set("q", globalSearch.trim());
+    }
+    const qStr = sp.toString();
+    navigate(`/Asset/search${qStr ? `?${qStr}` : ""}`);
   };
 
   const modules = [
@@ -264,20 +320,58 @@ export default function AssetShell({ children }: { children: ReactNode }) {
               {activeRole === "admin" && (
                 <div className="asset-topbar-center">
                   <form className="asset-topbar-search-box" onSubmit={handleSearchSubmit}>
+                    <Search20Regular
+                      style={{ color: "#64748B", fontSize: 16, marginLeft: 2, flexShrink: 0, cursor: "pointer" }}
+                      onClick={handleGoToSearch}
+                    />
                     <input
                       type="text"
                       className="asset-topbar-search-input"
-                      placeholder="Search by asset, serial, custodian or tag..."
+                      placeholder="Search"
                       value={globalSearch}
                       onChange={(e) => setGlobalSearch(e.target.value)}
+                      onClick={handleGoToSearch}
+                      onFocus={handleGoToSearch}
                     />
-                    <div className="asset-topbar-scope-badge" onClick={() => navigate("/Asset/search")}>
-                      <span>Asset</span>
-                      <ChevronDown16Regular />
+                    <div className="asset-topbar-scope-wrapper" ref={searchScopeRef}>
+                      <button
+                        type="button"
+                        className="asset-topbar-scope-btn"
+                        onClick={() => setSearchScopeOpen((prev) => !prev)}
+                        aria-expanded={searchScopeOpen}
+                        title="Search Category"
+                      >
+                        <span>
+                          {searchScope === "inventory"
+                            ? "Asset"
+                            : SEARCH_SCOPES.find((s) => s.key === searchScope)?.label || "Asset"}
+                        </span>
+                        {searchScopeOpen ? (
+                          <ChevronUp16Regular style={{ fontSize: 13, color: "#64748B" }} />
+                        ) : (
+                          <ChevronDown16Regular style={{ fontSize: 13, color: "#64748B" }} />
+                        )}
+                      </button>
+
+                      {searchScopeOpen && (
+                        <div className="asset-topbar-scope-menu">
+                          {SEARCH_SCOPES.map((s) => {
+                            const isSelected = searchScope === s.key;
+                            return (
+                              <button
+                                key={s.key}
+                                type="button"
+                                className={`asset-topbar-scope-item ${isSelected ? "active" : ""}`}
+                                onClick={() => handleSelectScope(s.key)}
+                              >
+                                <span>{s.label}</span>
+                                {isSelected && <Checkmark20Filled style={{ fontSize: 14, color: "#007ED5" }} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <button type="submit" className="asset-topbar-search-btn" title="Search">
-                      <Search24Regular style={{ width: 18, height: 18 }} />
-                    </button>
                   </form>
                 </div>
               )}

@@ -14,6 +14,8 @@ import {
   Combobox,
   Option,
   Checkbox,
+  Input,
+  Badge,
   Toast,
   ToastTitle,
   Toaster,
@@ -29,6 +31,11 @@ import {
   DeleteRegular,
   WarningRegular,
   ArrowRightRegular,
+  SearchRegular,
+  DismissRegular,
+  CheckmarkCircleFilled,
+  TagRegular,
+  CalendarRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
@@ -174,10 +181,17 @@ const EmployeeAssetDetail: React.FC = () => {
     return assetTypeFilter === "Non-IT" ? nonIt : !nonIt;
   });
 
+  const [addCategoryFilter, setAddCategoryFilter] = useState<string>("All");
+  const [allocationReason, setAllocationReason] = useState<string>("Standard workstation assignment");
+  const [allocationDate, setAllocationDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+
   const openAddDialog = async () => {
     setAddOpen(true);
     setSelectedAssetId(null);
     setAssetQuery("");
+    setAddCategoryFilter("All");
+    setAllocationReason("Standard workstation assignment");
+    setAllocationDate(new Date().toISOString().split("T")[0]);
     try {
       const all = await getAssetInventoryList();
       setInStockAssets(all.filter((a) => a.Status === "In Stock"));
@@ -191,16 +205,35 @@ const EmployeeAssetDetail: React.FC = () => {
     }
   };
 
+  const inStockCategories = useMemo(() => {
+    const set = new Set<string>();
+    inStockAssets.forEach((a) => {
+      if (a.Category) set.add(a.Category);
+    });
+    return ["All", ...Array.from(set)];
+  }, [inStockAssets]);
+
   const filteredInStock = useMemo(() => {
     const term = assetQuery.trim().toLowerCase();
-    if (!term) return inStockAssets;
-    return inStockAssets.filter(
-      (a) =>
-        a.AssetName.toLowerCase().includes(term) ||
-        a.AssetTagID.toLowerCase().includes(term) ||
-        a.Category.toLowerCase().includes(term)
-    );
-  }, [inStockAssets, assetQuery]);
+    return inStockAssets.filter((a) => {
+      if (addCategoryFilter !== "All" && (a.Category || "").toLowerCase() !== addCategoryFilter.toLowerCase()) {
+        return false;
+      }
+      if (!term) return true;
+      return (
+        (a.AssetName || "").toLowerCase().includes(term) ||
+        (a.AssetTagID || "").toLowerCase().includes(term) ||
+        (a.Category || "").toLowerCase().includes(term) ||
+        (a.Brand && a.Brand.toLowerCase().includes(term)) ||
+        (a.Model && a.Model.toLowerCase().includes(term)) ||
+        (a.SerialNo && a.SerialNo.toLowerCase().includes(term))
+      );
+    });
+  }, [inStockAssets, assetQuery, addCategoryFilter]);
+
+  const selectedAsset = useMemo(() => {
+    return inStockAssets.find((a) => a.ID === selectedAssetId) || null;
+  }, [inStockAssets, selectedAssetId]);
 
   const handleAssign = async () => {
     if (!userId || !selectedAssetId || !currentUser?.userID) return;
@@ -267,7 +300,7 @@ const EmployeeAssetDetail: React.FC = () => {
     <>
       <Toaster toasterId={toasterId} />
       {portal}
-      <div style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: "24px", width: "100%", boxSizing: "border-box" }}>
         
         {/* Back Link */}
         <button
@@ -799,43 +832,443 @@ const EmployeeAssetDetail: React.FC = () => {
 
       {/* Add Asset dialog */}
       <Dialog open={addOpen} onOpenChange={(_, d) => setAddOpen(d.open)}>
-        <DialogSurface mountNode={mountNode}>
-          <DialogBody>
-            <DialogTitle>Add Asset</DialogTitle>
-            <DialogContent>
-              <Combobox
-                placeholder="Search in-stock assets by name, tag, or category..."
-                mountNode={mountNode}
-                value={assetQuery}
-                onChange={(e) => setAssetQuery(e.target.value)}
-                onOptionSelect={(_, d) => {
-                  setSelectedAssetId(d.optionValue ?? null);
-                  const picked = inStockAssets.find((a) => a.ID === d.optionValue);
-                  if (picked) setAssetQuery(`${picked.AssetName} (${picked.AssetTagID})`);
+        <DialogSurface
+          mountNode={mountNode}
+          style={{
+            borderRadius: "20px",
+            maxWidth: "740px",
+            width: "95vw",
+            padding: "0px",
+            overflow: "hidden",
+            background: "#FFFFFF",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "20px 24px",
+                borderBottom: "1px solid #F1F5F9",
+                background: "#FFFFFF",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "12px",
+                    background: "#EFF6FF",
+                    color: "#007ED5",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "22px",
+                  }}
+                >
+                  <AddRegular />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
+                    Assign Asset to Employee
+                  </h2>
+                  <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "2px" }}>
+                    Select available corporate inventory to allocate to {employee?.DisplayName || "employee"}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAddOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#64748B",
+                  cursor: "pointer",
+                  padding: "6px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {filteredInStock.length === 0 ? (
-                  <Option key="none" value="" disabled>
-                    No in-stock assets found
-                  </Option>
-                ) : (
-                  filteredInStock.map((asset) => (
-                    <Option key={asset.ID} value={asset.ID} text={`${asset.AssetName} (${asset.AssetTagID})`}>
-                      {asset.AssetName} — {asset.Category} ({asset.AssetTagID})
-                    </Option>
-                  ))
-                )}
-              </Combobox>
-            </DialogContent>
-            <DialogActions>
+                <DismissRegular style={{ fontSize: "20px" }} />
+              </button>
+            </div>
+
+            {/* Employee Quick Info Banner */}
+            <div
+              style={{
+                padding: "12px 24px",
+                background: "#F8FAFC",
+                borderBottom: "1px solid #E2E8F0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "50%",
+                    background: "#007ED5",
+                    color: "#FFFFFF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                  }}
+                >
+                  {getInitials(employee?.DisplayName)}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "14px", color: "#1E293B" }}>
+                    {employee?.DisplayName || "Employee"}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#64748B", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>{employee?.Mail}</span>
+                    <span>•</span>
+                    <span>{employee?.Department || "General"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Badge appearance="tint" color="informative">
+                  {assets.length} Active {assets.length === 1 ? "Asset" : "Assets"}
+                </Badge>
+                <Badge appearance="tint" color="success">
+                  Eligible for Allocation
+                </Badge>
+              </div>
+            </div>
+
+            {/* Search & Category Filter Controls */}
+            <div style={{ padding: "16px 24px 8px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <Input
+                placeholder="Search available assets by name, tag ID, brand, model, serial..."
+                value={assetQuery}
+                onChange={(e) => setAssetQuery(e.target.value)}
+                contentBefore={<SearchRegular style={{ color: "#64748B" }} />}
+                contentAfter={
+                  assetQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setAssetQuery("")}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: "2px" }}
+                    >
+                      <DismissRegular style={{ fontSize: "14px", color: "#64748B" }} />
+                    </button>
+                  ) : undefined
+                }
+                style={{ width: "100%" }}
+              />
+
+              {/* Category Pills */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                {inStockCategories.map((cat) => {
+                  const isSelected = addCategoryFilter.toLowerCase() === cat.toLowerCase();
+                  const count =
+                    cat === "All"
+                      ? inStockAssets.length
+                      : inStockAssets.filter((a) => (a.Category || "").toLowerCase() === cat.toLowerCase()).length;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setAddCategoryFilter(cat)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "20px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        border: isSelected ? "1px solid #007ED5" : "1px solid #E2E8F0",
+                        background: isSelected ? "#007ED5" : "#FFFFFF",
+                        color: isSelected ? "#FFFFFF" : "#475569",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>{cat}</span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          padding: "1px 6px",
+                          borderRadius: "10px",
+                          background: isSelected ? "rgba(255,255,255,0.25)" : "#F1F5F9",
+                          color: isSelected ? "#FFFFFF" : "#64748B",
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* In-Stock Assets Scrollable List */}
+            <div style={{ padding: "8px 24px 16px 24px", overflowY: "auto", maxHeight: "250px", minHeight: "140px" }}>
+              {filteredInStock.length === 0 ? (
+                <div
+                  style={{
+                    padding: "36px 16px",
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px dashed #CBD5E1",
+                    borderRadius: "12px",
+                    background: "#F8FAFC",
+                  }}
+                >
+                  <BoxRegular style={{ fontSize: "36px", color: "#94A3B8", marginBottom: "8px" }} />
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#475569" }}>
+                    No available in-stock assets found
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px" }}>
+                    Try clearing your search query or selecting a different category
+                  </div>
+                  {(assetQuery || addCategoryFilter !== "All") && (
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => {
+                        setAssetQuery("");
+                        setAddCategoryFilter("All");
+                      }}
+                      style={{ marginTop: "12px" }}
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {filteredInStock.map((asset) => {
+                    const isSelected = selectedAssetId === asset.ID;
+                    const catTheme = getCategoryTheme(asset.Category);
+                    return (
+                      <div
+                        key={asset.ID}
+                        onClick={() => setSelectedAssetId(asset.ID)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "12px 16px",
+                          borderRadius: "12px",
+                          border: isSelected ? "2px solid #007ED5" : "1px solid #E2E8F0",
+                          background: isSelected ? "#F0F7FF" : "#FFFFFF",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "10px",
+                              background: catTheme.bg,
+                              color: catTheme.color,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "20px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {getCategoryIcon(asset.Category)}
+                          </div>
+
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                              <span style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B" }}>
+                                {asset.AssetName}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  background: "#E2E8F0",
+                                  color: "#334155",
+                                  padding: "2px 8px",
+                                  borderRadius: "6px",
+                                }}
+                              >
+                                {asset.AssetTagID}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  background: "#ECFDF5",
+                                  color: "#059669",
+                                  padding: "2px 8px",
+                                  borderRadius: "6px",
+                                }}
+                              >
+                                In Stock
+                              </span>
+                            </div>
+
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#64748B",
+                                marginTop: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <span>
+                                <strong>Category:</strong> {asset.Category}
+                              </span>
+                              {asset.Model && (
+                                <span>
+                                  <strong>Model:</strong> {asset.Model}
+                                </span>
+                              )}
+                              {asset.SerialNo && (
+                                <span>
+                                  <strong>S/N:</strong> {asset.SerialNo}
+                                </span>
+                              )}
+                              {(asset.LocationName || asset.Location) && (
+                                <span>
+                                  <strong>Location:</strong> {asset.LocationName || asset.Location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Selection checkmark or radio */}
+                        <div style={{ marginLeft: "12px", flexShrink: 0 }}>
+                          {isSelected ? (
+                            <CheckmarkCircleFilled style={{ fontSize: "22px", color: "#007ED5" }} />
+                          ) : (
+                            <div
+                              style={{
+                                width: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                                border: "2px solid #CBD5E1",
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Asset Context & Allocation Details Form */}
+            {selectedAsset && (
+              <div
+                style={{
+                  padding: "14px 24px",
+                  background: "#F8FAFC",
+                  borderTop: "1px solid #E2E8F0",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#0F172A", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <CheckmarkCircleFilled style={{ color: "#10B981", fontSize: "16px" }} />
+                    <span>Selected Asset: {selectedAsset.AssetName} ({selectedAsset.AssetTagID})</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#64748B" }}>Ready for instant handover</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748B", marginBottom: "4px" }}>
+                      Allocation Reason / Note
+                    </label>
+                    <Input
+                      value={allocationReason}
+                      onChange={(e) => setAllocationReason(e.target.value)}
+                      placeholder="e.g. Standard workstation equipment"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#64748B", marginBottom: "4px" }}>
+                      Allocation Date
+                    </label>
+                    <input
+                      type="date"
+                      value={allocationDate}
+                      onChange={(e) => setAllocationDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "32px",
+                        boxSizing: "border-box",
+                        borderRadius: "8px",
+                        border: "1px solid #CBD5E1",
+                        padding: "0 10px",
+                        fontSize: "12px",
+                        color: "#1E293B",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Actions Footer */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: "12px",
+                padding: "16px 24px",
+                borderTop: "1px solid #F1F5F9",
+                background: "#FFFFFF",
+              }}
+            >
               <Button appearance="secondary" onClick={() => setAddOpen(false)} disabled={assigning}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleAssign} disabled={!selectedAssetId || assigning}>
-                {assigning ? <Spinner size="tiny" /> : "Assign Asset"}
+              <Button
+                appearance="primary"
+                icon={<AddRegular />}
+                onClick={handleAssign}
+                disabled={!selectedAssetId || assigning}
+                style={{
+                  background: selectedAssetId ? "#007ED5" : undefined,
+                  fontWeight: 600,
+                }}
+              >
+                {assigning ? <Spinner size="tiny" /> : `Assign Asset to ${employee?.DisplayName ? employee.DisplayName.split(" ")[0] : "Employee"}`}
               </Button>
-            </DialogActions>
-          </DialogBody>
+            </div>
+          </div>
         </DialogSurface>
       </Dialog>
 

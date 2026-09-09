@@ -40,9 +40,9 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({ cards, onSele
             padding: "22px",
             cursor: "pointer",
             borderRadius: "18px",
-            background: card.cardBg || card.iconBg,
-            border: "1px solid rgba(0, 0, 0, 0.05)",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
+            background: "#FFFFFF",
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
             transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
             position: "relative",
             overflow: "hidden",
@@ -52,13 +52,13 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({ cards, onSele
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-4px)";
-            e.currentTarget.style.boxShadow = `0 14px 28px -4px ${card.iconColor}2a, 0 6px 12px -2px rgba(0, 0, 0, 0.04)`;
-            e.currentTarget.style.borderColor = `${card.iconColor}44`;
+            e.currentTarget.style.boxShadow = `0 12px 24px -4px ${card.iconColor}22, 0 4px 8px -2px rgba(0, 0, 0, 0.04)`;
+            e.currentTarget.style.borderColor = `${card.iconColor}55`;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.03)";
-            e.currentTarget.style.borderColor = "rgba(0, 0, 0, 0.05)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.04)";
+            e.currentTarget.style.borderColor = "#E2E8F0";
           }}
         >
           <div>
@@ -68,14 +68,14 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({ cards, onSele
                   width: "48px",
                   height: "48px",
                   borderRadius: "14px",
-                  background: "#FFFFFF",
+                  background: card.iconBg,
                   color: card.iconColor,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "22px",
                   flexShrink: 0,
-                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.06)",
+                  boxShadow: `0 2px 8px ${card.iconColor}18`,
                 }}
               >
                 {card.icon}
@@ -109,7 +109,7 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({ cards, onSele
               justifyContent: "space-between",
               marginTop: "20px",
               paddingTop: "12px",
-              borderTop: "1px solid rgba(0, 0, 0, 0.06)",
+              borderTop: "1px solid #F1F5F9",
             }}
           >
             <Text size={200} weight="semibold" style={{ color: card.iconColor || "#007ED5" }}>

@@ -25,8 +25,10 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const toDateKey = (year: number, month: number, day: number) =>
-  `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+const toDateKey = (year: number, month: number, day: number) => {
+  const d = new Date(year, month, day);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 interface AssetPurchaseCalendarDialogProps {
   open: boolean;
@@ -52,12 +54,13 @@ const AssetPurchaseCalendarDialog: React.FC<AssetPurchaseCalendarDialogProps> = 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onOpenChange]);
 
-  // Group assets by PurchasedDate (YYYY-MM-DD)
+  // Group assets by PurchasedDate or CreatedAt (YYYY-MM-DD)
   const assetsByDate = useMemo(() => {
     const map = new Map<string, AssetInventoryRecord[]>();
     assets.forEach((asset) => {
-      if (!asset.PurchasedDate) return;
-      const key = asset.PurchasedDate.slice(0, 10);
+      const dateStr = asset.PurchasedDate || asset.CreatedAt;
+      if (!dateStr) return;
+      const key = dateStr.slice(0, 10);
       const list = map.get(key) ?? [];
       list.push(asset);
       map.set(key, list);
@@ -78,9 +81,9 @@ const AssetPurchaseCalendarDialog: React.FC<AssetPurchaseCalendarDialogProps> = 
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push({ day: d, month, year, inCurrentMonth: true });
     }
+    let nextMonthDay = 1;
     while (cells.length % 7 !== 0 || cells.length < 42) {
-      const last = cells[cells.length - 1];
-      cells.push({ day: last.day + 1, month, year, inCurrentMonth: false });
+      cells.push({ day: nextMonthDay++, month: month + 1, year, inCurrentMonth: false });
     }
 
     const rows: typeof cells[] = [];

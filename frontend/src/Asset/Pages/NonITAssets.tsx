@@ -1,17 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
   Input,
   Spinner,
   Text,
-  Dropdown,
-  Option,
   Toast,
   ToastTitle,
   Toaster,
   useToastController,
   useId,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from "@fluentui/react-components";
 import {
   AddRegular,
@@ -27,12 +30,17 @@ import {
   ChevronRightRegular,
   ChevronLeftRegular,
   FilterRegular,
+  ListRegular,
+  AppsRegular,
+  MoreVertical20Regular,
+  EyeRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
 import { AssetCategoryRecord, AssetStatus, getAssetCategories } from "../Services/AssetInventoryService";
 import { NonITAssetRecord, getNonITAssets, deleteNonITAsset } from "../Services/NonITAssetService";
 import NonITAssetFormDialog from "../Components/NonITAssetFormDialog";
+import { CANONICAL_BRANCHES, normalizeBranch } from "../../Common/EnterpriseConstants";
 
 // ============================================================================
 // KPI Folder Icons matching IT Asset List Design
@@ -92,7 +100,7 @@ const formatLakhs = (val: number): string => {
 };
 
 const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+  value ? new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "numeric", year: "numeric" }) : "—";
 
 const formatValue = (value: number | null) =>
   value != null ? `₹${value.toLocaleString("en-IN")}` : "—";
@@ -153,17 +161,46 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
   const [assets, setAssets] = useState<NonITAssetRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters state
-  const [selectedBranch, setSelectedBranch] = useState("All Branches");
+  // View mode
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  // Search & in-table filter states
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState("All Categories");
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [branchFilter, setBranchFilter] = useState<string[]>([]);
+  const [locationFilter, setLocationFilter] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<AssetStatus | null>(null);
-  const [filterAMC, setFilterAMC] = useState("All");
+
+  // In-table popover open states
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const branchMenuRef = useRef<HTMLDivElement>(null);
+  const locationMenuRef = useRef<HTMLDivElement>(null);
 
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<NonITAssetRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Close header popovers on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+      if (branchMenuRef.current && !branchMenuRef.current.contains(e.target as Node)) {
+        setBranchDropdownOpen(false);
+      }
+      if (locationMenuRef.current && !locationMenuRef.current.contains(e.target as Node)) {
+        setLocationDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const showError = (message: string) => {
     dispatchToast(
@@ -191,19 +228,48 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
     loadAll();
   }, []);
 
+  const availableCategories = useMemo(() => {
+    const unique = Array.from(new Set(categories.map((c) => c.CategoryName).filter(Boolean)));
+    if (unique.length > 0) return unique;
+    return ["HVAC & Climate", "Pantry & Appliances", "Electrical & Power", "Office Fixtures", "Furniture", "Security / CCTV"];
+  }, [categories]);
+
+  const availableBranches = useMemo(() => [...CANONICAL_BRANCHES], []);
+  const availableLocations = useMemo(
+    () => ["Main Floor", "Floor 1", "Floor 2", "Floor 3", "Floor 4", "Floor 5", "Basement", "Cafeteria"],
+    []
+  );
+
+  const toggleCategoryFilter = (cat: string) => {
+    setCategoryFilter((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+  };
+
+  const toggleBranchFilter = (b: string) => {
+    setBranchFilter((prev) => (prev.includes(b) ? prev.filter((item) => item !== b) : [...prev, b]));
+  };
+
+  const toggleLocationFilter = (loc: string) => {
+    setLocationFilter((prev) => (prev.includes(loc) ? prev.filter((item) => item !== loc) : [...prev, loc]));
+  };
+
   // Filtered assets
   const filteredAssets = useMemo(() => {
     return assets.filter((a) => {
-      // Branch filter
-      if (selectedBranch !== "All Branches") {
-        const off = a.LocationName || "Coimbatore HQ";
-        if (!off.toLowerCase().includes(selectedBranch.toLowerCase())) return false;
+      // 1. Branch filter
+      if (branchFilter.length > 0) {
+        const off = normalizeBranch(a.LocationName || "Coimbatore");
+        if (!branchFilter.includes(off)) return false;
       }
-      // Category filter
-      if (filterCategory !== "All Categories" && a.CategoryName !== filterCategory) {
+      // 2. Category filter
+      if (categoryFilter.length > 0 && !categoryFilter.includes(a.CategoryName)) {
         return false;
       }
-      // Status filter
+      // 3. Location filter
+      if (locationFilter.length > 0) {
+        const locStr = a.Floor ? `Floor ${a.Floor}` : "Main Floor";
+        if (!locationFilter.includes(locStr)) return false;
+      }
+      // 4. Status filter
       if (filterStatus) {
         if (filterStatus === "Assigned" && (a.Status === "Assigned" || (a.Status as string) === "In Use")) {
           // match
@@ -213,32 +279,25 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
           return false;
         }
       }
-      // AMC filter
-      if (filterAMC !== "All") {
-        if (!a.AMCExpiryDate) return false;
-        const now = Date.now();
-        const expiry = new Date(a.AMCExpiryDate).getTime();
-        if (filterAMC === "Expired" && expiry >= now) return false;
-        if (filterAMC === "Due soon" && (expiry < now || expiry > now + 60 * 86400000)) return false;
-        if (filterAMC === "Active" && expiry < now) return false;
-      }
-      // Search
+      // 5. Search
       if (search.trim()) {
         const term = search.trim().toLowerCase();
+        const branchStr = normalizeBranch(a.LocationName || "Coimbatore").toLowerCase();
         const match =
-          a.AssetTag.toLowerCase().includes(term) ||
-          a.CategoryName.toLowerCase().includes(term) ||
-          (a.LocationName && a.LocationName.toLowerCase().includes(term)) ||
-          (a.VendorName && a.VendorName.toLowerCase().includes(term));
+          (a.AssetTag || "").toLowerCase().includes(term) ||
+          (a.CategoryName || "").toLowerCase().includes(term) ||
+          (a.LocationName || "").toLowerCase().includes(term) ||
+          (a.VendorName || "").toLowerCase().includes(term) ||
+          branchStr.includes(term);
         if (!match) return false;
       }
       return true;
     });
-  }, [assets, selectedBranch, filterCategory, filterStatus, filterAMC, search]);
+  }, [assets, branchFilter, categoryFilter, locationFilter, filterStatus, search]);
 
   useEffect(() => {
     setPage(1);
-  }, [selectedBranch, filterCategory, filterStatus, filterAMC, search]);
+  }, [branchFilter, categoryFilter, locationFilter, filterStatus, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAssets.length / PAGE_SIZE));
   const pagedAssets = useMemo(() => {
@@ -289,8 +348,8 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
     const rows = filteredAssets.map((a) => [
       a.AssetTag,
       a.CategoryName,
-      a.LocationName || "Coimbatore HQ",
-      `Floor ${a.Floor || 1}`,
+      normalizeBranch(a.LocationName || "Coimbatore"),
+      a.Floor ? `Floor ${a.Floor}` : "Main Floor",
       a.VendorName || "Facilities",
       a.Status,
       formatDate(a.AMCExpiryDate),
@@ -306,14 +365,12 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
     URL.revokeObjectURL(url);
   };
 
-  const availableBranches = ["All Branches", "Coimbatore HQ", "Chennai", "Bangalore", "Hyderabad", "Mumbai", "Delhi NCR"];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <Toaster toasterId={toasterId} />
       {portal}
 
-      {/* Main Title Row matching IT Asset Inventory */}
+      {/* Main Title Row matching IT Asset Inventory (NO export button here) */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.01em" }}>
@@ -325,23 +382,6 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <Button
-            appearance="outline"
-            shape="rounded"
-            icon={<ArrowDownloadRegular />}
-            onClick={handleExport}
-            style={{
-              borderRadius: "9999px",
-              background: "#FFFFFF",
-              border: "1px solid #E2E8F0",
-              fontWeight: 600,
-              padding: "8px 20px",
-              color: "#334155",
-            }}
-          >
-            Export
-          </Button>
-
           {topToggle}
 
           <button
@@ -349,28 +389,44 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "8px",
-              background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
-              color: "#FFFFFF",
+              gap: "10px",
+              background: "#FFFFFF",
+              color: "#0f3d64",
               borderRadius: "9999px",
-              border: "none",
-              padding: "9px 22px",
+              border: "1px solid #E2E8F0",
+              padding: "4px 20px 4px 5px",
               fontSize: "14px",
               fontWeight: 600,
               cursor: "pointer",
-              boxShadow: "0 3px 12px rgba(0, 126, 213, 0.32)",
-              transition: "all 0.18s ease",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)",
+              transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 5px 16px rgba(0, 126, 213, 0.42)";
+              e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 0, 0, 0.09)";
+              e.currentTarget.style.borderColor = "#CBD5E1";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 126, 213, 0.32)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)";
+              e.currentTarget.style.borderColor = "#E2E8F0";
             }}
           >
-            <AddRegular style={{ fontSize: 18, strokeWidth: 2 }} />
+            <span
+              style={{
+                width: "30px",
+                height: "30px",
+                borderRadius: "50%",
+                background: "#007ED5",
+                color: "#FFFFFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 6px rgba(0, 126, 213, 0.3)",
+              }}
+            >
+              <AddRegular style={{ fontSize: 16, strokeWidth: 2.8 }} />
+            </span>
             <span>Add Asset</span>
           </button>
         </div>
@@ -400,7 +456,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#EAF7EE",
+                background: "#E8FBF0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -543,32 +599,22 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
         </div>
       </div>
 
-      {/* Search & Filter Toolbar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          flexWrap: "wrap",
-          background: "#FFFFFF",
-          padding: "16px 20px",
-          borderRadius: 16,
-          border: "1px solid #EDF2F7",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-        }}
-      >
+      {/* Search & Toolbar Row matching IT Asset Inventory EXACTLY */}
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
         {/* Search Input */}
         <div
           style={{
-            flex: "1 1 280px",
+            flex: 1,
+            minWidth: "280px",
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            background: "#F8FAFC",
+            background: "#FFFFFF",
             border: "1px solid #E2E8F0",
             borderRadius: "12px",
             padding: "0 16px",
-            height: "42px",
+            height: "44px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
           }}
         >
           <SearchRegular style={{ color: "#94A3B8", fontSize: 18 }} />
@@ -586,97 +632,112 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
               color: "#0F172A",
             }}
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#94A3B8",
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
 
-        {/* Branch Filter Dropdown */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Dropdown
-            mountNode={mountNode}
-            value={selectedBranch}
-            selectedOptions={[selectedBranch]}
-            onOptionSelect={(_, d) => setSelectedBranch(d.optionValue ?? "All Branches")}
-            style={{ minWidth: 170 }}
-          >
-            {availableBranches.map((b) => (
-              <Option key={b} value={b}>
-                {b}
-              </Option>
-            ))}
-          </Dropdown>
-        </div>
-
-        {/* Category Dropdown */}
-        <Dropdown
-          mountNode={mountNode}
-          value={filterCategory}
-          selectedOptions={[filterCategory]}
-          onOptionSelect={(_, d) => setFilterCategory(d.optionValue ?? "All Categories")}
-          style={{ minWidth: 160 }}
-        >
-          <Option value="All Categories">All Categories</Option>
-          {categories.map((c) => (
-            <Option key={c.ID} value={c.CategoryName ?? ""}>
-              {c.CategoryName}
-            </Option>
-          ))}
-        </Dropdown>
-
-        {/* Status Dropdown */}
-        <Dropdown
-          mountNode={mountNode}
-          value={filterStatus ? filterStatus : "All Status"}
-          selectedOptions={[filterStatus ? filterStatus : "All Status"]}
-          onOptionSelect={(_, d) => {
-            const val = d.optionValue;
-            setFilterStatus(val === "All Status" ? null : (val as AssetStatus));
+        {/* Export Button placed beside Search Bar */}
+        <button
+          onClick={handleExport}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "#FFFFFF",
+            border: "1px solid #E2E8F0",
+            borderRadius: "12px",
+            height: "44px",
+            padding: "0 18px",
+            color: "#475569",
+            fontSize: "13.5px",
+            fontWeight: 500,
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+            transition: "all 0.15s ease",
           }}
-          style={{ minWidth: 150 }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#CBD5E1")}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#E2E8F0")}
         >
-          <Option value="All Status">All Status</Option>
-          <Option value="In Stock">In Stock</Option>
-          <Option value="Assigned">In Use</Option>
-          <Option value="Under Maintenance">Under Maintenance</Option>
-          <Option value="End of Use">End of Use</Option>
-        </Dropdown>
+          <ArrowDownloadRegular style={{ fontSize: 17, color: "#64748B" }} />
+          <span>Export</span>
+        </button>
 
-        {/* AMC Dropdown */}
-        <Dropdown
-          mountNode={mountNode}
-          value={filterAMC}
-          selectedOptions={[filterAMC]}
-          onOptionSelect={(_, d) => setFilterAMC(d.optionValue ?? "All")}
-          style={{ minWidth: 140 }}
+        {/* View Switcher: List and Grid */}
+        <div
+          style={{
+            display: "flex",
+            background: "#FFFFFF",
+            border: "1px solid #E2E8F0",
+            borderRadius: "12px",
+            padding: "4px",
+            height: "44px",
+            boxSizing: "border-box",
+            alignItems: "center",
+            gap: "2px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+          }}
         >
-          <Option value="All">AMC · Any</Option>
-          <Option value="Active">AMC · Active</Option>
-          <Option value="Due soon">AMC · Due soon</Option>
-          <Option value="Expired">AMC · Expired</Option>
-        </Dropdown>
-
-        {/* Reset Filters */}
-        {(selectedBranch !== "All Branches" || filterCategory !== "All Categories" || filterStatus !== null || filterAMC !== "All" || search.trim() !== "") && (
-          <Button
-            appearance="subtle"
-            onClick={() => {
-              setSelectedBranch("All Branches");
-              setFilterCategory("All Categories");
-              setFilterStatus(null);
-              setFilterAMC("All");
-              setSearch("");
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            title="List view"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "36px",
+              height: "34px",
+              borderRadius: "8px",
+              border: "none",
+              background: viewMode === "list" ? "#F1F5F9" : "transparent",
+              color: viewMode === "list" ? "#007ED5" : "#64748B",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
             }}
-            style={{ color: "#007ED5", fontWeight: 600, fontSize: "13px" }}
           >
-            Reset Filters
-          </Button>
-        )}
+            <ListRegular style={{ fontSize: 18 }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            title="Grid view"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "36px",
+              height: "34px",
+              borderRadius: "8px",
+              border: "none",
+              background: viewMode === "grid" ? "#F1F5F9" : "transparent",
+              color: viewMode === "grid" ? "#007ED5" : "#64748B",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <AppsRegular style={{ fontSize: 18 }} />
+          </button>
+        </div>
       </div>
 
-      {/* Main Table matching IT Asset List Design */}
+      {/* Main Table or Grid View matching IT Asset List Design */}
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "60px", background: "#ffffff", borderRadius: 16 }}>
           <Spinner label="Loading Non-IT assets..." />
         </div>
-      ) : (
+      ) : viewMode === "list" ? (
         <div
           style={{
             background: "#FFFFFF",
@@ -686,7 +747,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
             overflow: "visible",
           }}
         >
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto", position: "relative" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #EDF2F7", background: "#FFFFFF" }}>
@@ -698,22 +759,296 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                     </div>
                   </th>
 
-                  {/* 2. Category */}
-                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569" }}>
-                    Category
-                  </th>
+                  {/* 2. Type with interactive popover */}
+                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569", position: "relative" }}>
+                    <div ref={categoryMenuRef} style={{ display: "inline-block" }}>
+                      <button
+                        type="button"
+                        onClick={() => setCategoryDropdownOpen((v) => !v)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: 0,
+                          font: "inherit",
+                          color: categoryFilter.length > 0 ? "#007ED5" : "#475569",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>Type</span>
+                        <FilterRegular style={{ fontSize: 14, color: categoryFilter.length > 0 ? "#007ED5" : "#94A3B8" }} />
+                      </button>
 
-                  {/* 3. Branch with dedicated column and Building icon */}
-                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                      <BuildingRegular style={{ fontSize: 14, color: "#007ED5" }} />
-                      <span>Branch</span>
+                      {categoryDropdownOpen && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 16,
+                            zIndex: 100,
+                            background: "#FFFFFF",
+                            borderRadius: 12,
+                            border: "1px solid #E2E8F0",
+                            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)",
+                            padding: "12px 18px",
+                            minWidth: 170,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                          }}
+                        >
+                          {availableCategories.map((type) => {
+                            const isChecked = categoryFilter.includes(type);
+                            return (
+                              <label
+                                key={type}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  cursor: "pointer",
+                                  fontSize: "13.5px",
+                                  color: "#1E293B",
+                                  userSelect: "none",
+                                  padding: "2px 0",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleCategoryFilter(type)}
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    accentColor: "#007ED5",
+                                    cursor: "pointer",
+                                  }}
+                                />
+                                <span>{type}</span>
+                              </label>
+                            );
+                          })}
+                          {categoryFilter.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setCategoryFilter([])}
+                              style={{
+                                border: "none",
+                                background: "transparent",
+                                color: "#007ED5",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                textAlign: "left",
+                                paddingTop: "6px",
+                                borderTop: "1px solid #F1F5F9",
+                              }}
+                            >
+                              Clear filter
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </th>
 
-                  {/* 4. Location / Floor */}
-                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569" }}>
-                    Location
+                  {/* 3. Branch with dedicated column and popover */}
+                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569", position: "relative" }}>
+                    <div ref={branchMenuRef} style={{ display: "inline-block" }}>
+                      <button
+                        type="button"
+                        onClick={() => setBranchDropdownOpen((v) => !v)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: 0,
+                          font: "inherit",
+                          color: branchFilter.length > 0 ? "#007ED5" : "#475569",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <BuildingRegular style={{ fontSize: 14, color: branchFilter.length > 0 ? "#007ED5" : "#94A3B8" }} />
+                        <span>Branch</span>
+                        <FilterRegular style={{ fontSize: 14, color: branchFilter.length > 0 ? "#007ED5" : "#94A3B8" }} />
+                      </button>
+
+                      {branchDropdownOpen && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 16,
+                            zIndex: 100,
+                            background: "#FFFFFF",
+                            borderRadius: 12,
+                            border: "1px solid #E2E8F0",
+                            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)",
+                            padding: "12px 18px",
+                            minWidth: 170,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                          }}
+                        >
+                          {availableBranches.map((branch) => {
+                            const isChecked = branchFilter.includes(branch);
+                            return (
+                              <label
+                                key={branch}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  cursor: "pointer",
+                                  fontSize: "13.5px",
+                                  color: "#1E293B",
+                                  userSelect: "none",
+                                  padding: "2px 0",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleBranchFilter(branch)}
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    accentColor: "#007ED5",
+                                    cursor: "pointer",
+                                  }}
+                                />
+                                <span>{branch}</span>
+                              </label>
+                            );
+                          })}
+                          {branchFilter.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setBranchFilter([])}
+                              style={{
+                                border: "none",
+                                background: "transparent",
+                                color: "#007ED5",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                textAlign: "left",
+                                paddingTop: "6px",
+                                borderTop: "1px solid #F1F5F9",
+                              }}
+                            >
+                              Clear filter
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 4. Location with interactive popover */}
+                  <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569", position: "relative" }}>
+                    <div ref={locationMenuRef} style={{ display: "inline-block" }}>
+                      <button
+                        type="button"
+                        onClick={() => setLocationDropdownOpen((v) => !v)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: 0,
+                          font: "inherit",
+                          color: locationFilter.length > 0 ? "#007ED5" : "#475569",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>Location</span>
+                        <FilterRegular style={{ fontSize: 14, color: locationFilter.length > 0 ? "#007ED5" : "#94A3B8" }} />
+                      </button>
+
+                      {locationDropdownOpen && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 16,
+                            zIndex: 100,
+                            background: "#FFFFFF",
+                            borderRadius: 12,
+                            border: "1px solid #E2E8F0",
+                            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)",
+                            padding: "12px 18px",
+                            minWidth: 170,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                          }}
+                        >
+                          {availableLocations.map((loc) => {
+                            const isChecked = locationFilter.includes(loc);
+                            return (
+                              <label
+                                key={loc}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  cursor: "pointer",
+                                  fontSize: "13.5px",
+                                  color: "#1E293B",
+                                  userSelect: "none",
+                                  padding: "2px 0",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleLocationFilter(loc)}
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    accentColor: "#007ED5",
+                                    cursor: "pointer",
+                                  }}
+                                />
+                                <span>{loc}</span>
+                              </label>
+                            );
+                          })}
+                          {locationFilter.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setLocationFilter([])}
+                              style={{
+                                border: "none",
+                                background: "transparent",
+                                color: "#007ED5",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                textAlign: "left",
+                                paddingTop: "6px",
+                                borderTop: "1px solid #F1F5F9",
+                              }}
+                            >
+                              Clear filter
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </th>
 
                   {/* 5. Custodian / Vendor */}
@@ -726,7 +1061,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                     Status
                   </th>
 
-                  {/* 7. AMC */}
+                  {/* 7. AMC Expiry */}
                   <th style={{ padding: "16px 20px", fontSize: "13px", fontWeight: 600, color: "#475569" }}>
                     AMC Expiry
                   </th>
@@ -737,7 +1072,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                   </th>
 
                   {/* 9. Actions */}
-                  <th style={{ width: 80, padding: "16px 16px", textAlign: "right" }}>Actions</th>
+                  <th style={{ width: 48, padding: "16px 12px" }}></th>
                 </tr>
               </thead>
 
@@ -780,7 +1115,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                         onClick={() => navigate(`/Asset/non-it-assets/${asset.ID}`)}
                       >
                         {/* Asset: Icon container + Category Name + Tag ID */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div
                               style={{
@@ -801,7 +1136,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                               <div style={{ fontWeight: 600, color: "#0F172A", fontSize: "14px" }}>
                                 {asset.CategoryName || "Asset"}
                               </div>
-                              <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
+                              <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "2px" }}>
                                 {asset.AssetTag}
                               </div>
                             </div>
@@ -809,14 +1144,14 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                         </td>
 
                         {/* Category */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <span style={{ color: "#334155", fontSize: "13.5px", fontWeight: 500 }}>
                             {asset.CategoryName}
                           </span>
                         </td>
 
                         {/* Branch (Dedicated Column) */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <span
                             style={{
                               display: "inline-flex",
@@ -832,12 +1167,12 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                             }}
                           >
                             <BuildingRegular style={{ fontSize: 13, color: "#64748B" }} />
-                            <span>{asset.LocationName || "Coimbatore HQ"}</span>
+                            <span>{normalizeBranch(asset.LocationName || "Coimbatore")}</span>
                           </span>
                         </td>
 
                         {/* Location / Floor */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <div style={{ color: "#334155", fontSize: "13.5px" }}>
                             {asset.Floor ? `Floor ${asset.Floor}` : "Main Floor"}
                           </div>
@@ -845,7 +1180,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                         </td>
 
                         {/* Custodian / Vendor */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <div style={{ fontWeight: 500, color: "#0F172A", fontSize: "13.5px" }}>
                             {asset.VendorName || "Facilities"}
                           </div>
@@ -853,7 +1188,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                         </td>
 
                         {/* Status: Soft pastel pill badge matching IT assets */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <span
                             style={{
                               display: "inline-block",
@@ -870,7 +1205,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                         </td>
 
                         {/* AMC Expiry */}
-                        <td style={{ padding: "16px 20px", verticalAlign: "middle" }}>
+                        <td style={{ padding: "18px 20px", verticalAlign: "middle" }}>
                           <div style={{ color: "#334155", fontSize: "13px" }}>{formatDate(asset.AMCExpiryDate)}</div>
                           {amcStatus === "expired" && (
                             <span style={{ display: "inline-block", color: "#DC2626", fontSize: "11px", fontWeight: 600, marginTop: "2px" }}>
@@ -889,23 +1224,43 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
                           {formatValue(asset.Value)}
                         </td>
 
-                        {/* Actions */}
-                        <td style={{ padding: "16px 16px", verticalAlign: "middle", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                            <Button
-                              appearance="subtle"
-                              icon={<EditRegular style={{ fontSize: 16, color: "#64748B" }} />}
-                              onClick={() => openEdit(asset)}
-                              title="Edit"
-                            />
-                            <Button
-                              appearance="subtle"
-                              icon={<DeleteRegular style={{ fontSize: 16, color: "#EF4444" }} />}
-                              onClick={() => handleDelete(asset)}
-                              disabled={deletingId === asset.ID}
-                              title="Delete"
-                            />
-                          </div>
+                        {/* Actions matching IT Asset 3-dot Menu */}
+                        <td style={{ padding: "18px 12px", verticalAlign: "middle", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                          <Menu mountNode={mountNode}>
+                            <MenuTrigger disableButtonEnhancement>
+                              <button
+                                type="button"
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  color: "#94A3B8",
+                                  cursor: "pointer",
+                                  padding: "6px",
+                                  borderRadius: "6px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = "#0F172A")}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = "#94A3B8")}
+                              >
+                                <MoreVertical20Regular style={{ fontSize: 18 }} />
+                              </button>
+                            </MenuTrigger>
+                            <MenuPopover>
+                              <MenuList>
+                                <MenuItem icon={<EyeRegular />} onClick={() => navigate(`/Asset/non-it-assets/${asset.ID}`)}>
+                                  View Details
+                                </MenuItem>
+                                <MenuItem icon={<EditRegular />} onClick={() => openEdit(asset)}>
+                                  Edit
+                                </MenuItem>
+                                <MenuItem icon={<DeleteRegular />} onClick={() => handleDelete(asset)}>
+                                  Delete
+                                </MenuItem>
+                              </MenuList>
+                            </MenuPopover>
+                          </Menu>
                         </td>
                       </tr>
                     );
@@ -914,101 +1269,231 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination matching IT Assets */}
-          {!loading && filteredAssets.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                borderTop: "1px solid #EDF2F7",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}
-            >
-              <span style={{ fontSize: "13px", color: "#64748B" }}>
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredAssets.length)} of{" "}
-                {filteredAssets.length} assets
-              </span>
-
-              {totalPages > 1 && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <button
-                    type="button"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    style={{
-                      border: "1px solid #E2E8F0",
-                      background: "#ffffff",
-                      borderRadius: "8px",
-                      width: "32px",
-                      height: "32px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: page === 1 ? "not-allowed" : "pointer",
-                      opacity: page === 1 ? 0.5 : 1,
-                    }}
-                  >
-                    <ChevronLeftRegular style={{ fontSize: 16 }} />
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPage(p)}
+        </div>
+      ) : (
+        /* Grid View matching IT Asset Inventory */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {pagedAssets.map((item) => {
+            const badge = getStatusBadge(item.Status);
+            return (
+              <div
+                key={item.ID}
+                style={{
+                  padding: 20,
+                  borderRadius: 16,
+                  background: "#FFFFFF",
+                  border: "1px solid #EDF2F7",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
                       style={{
-                        border: p === page ? "1px solid #007ED5" : "1px solid #E2E8F0",
-                        background: p === page ? "#007ED5" : "#ffffff",
-                        color: p === page ? "#ffffff" : "#475569",
-                        borderRadius: "8px",
-                        width: "32px",
-                        height: "32px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        cursor: "pointer",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: "#F0F7FF",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 18,
+                        flexShrink: 0,
                       }}
                     >
-                      {p}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
+                      {getNonITCategoryIcon(item.CategoryName)}
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: "#64748B", textTransform: "uppercase", fontWeight: 600 }}>
+                        {item.CategoryName}
+                      </span>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#007ED5" }}>{item.AssetTag}</div>
+                    </div>
+                  </div>
+                  <span
                     style={{
-                      border: "1px solid #E2E8F0",
-                      background: "#ffffff",
-                      borderRadius: "8px",
-                      width: "32px",
-                      height: "32px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: page >= totalPages ? "not-allowed" : "pointer",
-                      opacity: page >= totalPages ? 0.5 : 1,
+                      background: badge.bg,
+                      color: badge.color,
+                      padding: "2px 10px",
+                      borderRadius: 9999,
+                      fontSize: 11.5,
+                      fontWeight: 600,
                     }}
                   >
-                    <ChevronRightRegular style={{ fontSize: 16 }} />
+                    {badge.label}
+                  </span>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 600, color: "#0F172A", fontSize: 14.5, marginBottom: 2 }}>
+                    {item.CategoryName}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B" }}>Vendor: {item.VendorName || "Facilities"}</div>
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px solid #F1F5F9",
+                    paddingTop: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    fontSize: 12.5,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748B" }}>Branch:</span>
+                    <span style={{ fontWeight: 600, color: "#1E293B" }}>{normalizeBranch(item.LocationName || "Coimbatore")}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748B" }}>Location:</span>
+                    <span style={{ color: "#334155" }}>{item.Floor ? `Floor ${item.Floor}` : "Main Floor"}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748B" }}>AMC Expiry:</span>
+                    <span style={{ color: "#64748B" }}>{formatDate(item.AMCExpiryDate)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748B" }}>Book Value:</span>
+                    <span style={{ fontWeight: 700, color: "#0F172A" }}>{formatValue(item.Value)}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    style={{
+                      flex: 1,
+                      borderRadius: 8,
+                      background: "#007ED5",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "6px 12px",
+                      fontWeight: 600,
+                      fontSize: "12.5px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => navigate(`/Asset/non-it-assets/${item.ID}`)}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      borderRadius: 8,
+                      background: "#F1F5F9",
+                      border: "none",
+                      padding: "6px 12px",
+                      color: "#475569",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => openEdit(item)}
+                  >
+                    Edit
                   </button>
                 </div>
-              )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination matching IT Assets */}
+      {!loading && filteredAssets.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 4px",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
+        >
+          <span style={{ fontSize: "13px", color: "#64748B" }}>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredAssets.length)} of{" "}
+            {filteredAssets.length} assets
+          </span>
+
+          {totalPages > 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "1px solid #E2E8F0",
+                  background: page === 1 ? "#F8FAFC" : "#FFFFFF",
+                  color: page === 1 ? "#CBD5E1" : "#475569",
+                  cursor: page === 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                <ChevronLeftRegular style={{ fontSize: 16 }} />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setPage(num)}
+                  style={{
+                    minWidth: "32px",
+                    height: "32px",
+                    padding: "0 8px",
+                    borderRadius: "8px",
+                    border: num === page ? "1px solid #007ED5" : "1px solid #E2E8F0",
+                    background: num === page ? "#007ED5" : "#FFFFFF",
+                    color: num === page ? "#FFFFFF" : "#475569",
+                    fontWeight: num === page ? 600 : 400,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {num}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "1px solid #E2E8F0",
+                  background: page === totalPages ? "#F8FAFC" : "#FFFFFF",
+                  color: page === totalPages ? "#CBD5E1" : "#475569",
+                  cursor: page === totalPages ? "not-allowed" : "pointer",
+                }}
+              >
+                <ChevronRightRegular style={{ fontSize: 16 }} />
+              </button>
             </div>
           )}
         </div>
       )}
 
+      {/* Add / Edit Form Dialog */}
       <NonITAssetFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        asset={editingAsset}
-        currentUserId={currentUserId}
+        editingAsset={editingAsset}
         onSaved={loadAll}
-        onAssetChanged={(updated) => setEditingAsset(updated)}
       />
     </div>
   );

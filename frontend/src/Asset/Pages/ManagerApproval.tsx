@@ -494,12 +494,12 @@ const ManagerApproval: React.FC = () => {
       <Toaster toasterId={toasterId} />
       <div
         style={{
-          padding: "28px 36px",
+          padding: "20px 24px",
           display: "flex",
           flexDirection: "column",
           gap: "24px",
-          maxWidth: "1280px",
-          margin: "0 auto",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* If a request is being reviewed, show full screen decision view matching Approvals.png */}
@@ -858,6 +858,19 @@ const ManagerApproval: React.FC = () => {
               </h1>
             </div>
 
+            {/* View Type Pill Toggle — Asset Requests / Hardware / Repairs / Lost */}
+            <div style={{ overflowX: "auto", paddingBottom: "2px" }}>
+              <QuadraPillToggle<RequestType>
+                options={[
+                  { key: "employee", label: `Asset Requests (${requests.length})`, icon: <PeopleTeamRegular /> },
+                  { key: "hardware", label: `Hardware Upgrade (${upgradeRequests.length})`, icon: <DeveloperBoardRegular /> },
+                  { key: "repair", label: `Repairs (${repairRequests.length})`, icon: <WrenchRegular /> },
+                  { key: "lost", label: `Lost Assets (${lostRequests.length})`, icon: <WarningRegular /> },
+                ]}
+                value={view === "select" ? "employee" : view}
+                onChange={(val) => setView(val)}
+              />
+            </div>
 
             {view === "hardware" && (
               <div style={{ background: "#FFFFFF", borderRadius: "20px", padding: "24px", border: "1px solid #E2E8F0" }}>

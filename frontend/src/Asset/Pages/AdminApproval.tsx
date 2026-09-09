@@ -752,7 +752,7 @@ const AdminApproval: React.FC = () => {
   return (
     <>
       <Toaster toasterId={toasterId} />
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* <Text size={600} weight="semibold">
           Admin Approval
         </Text> */}

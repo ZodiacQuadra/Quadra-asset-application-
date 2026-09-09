@@ -24,7 +24,7 @@ try {
 }
 
 db.exec(`
-  CREATE TABLE IF NOT EXISTS employees (id TEXT PRIMARY KEY, display_name TEXT NOT NULL, email TEXT, employee_id TEXT, job_title TEXT, department TEXT, role TEXT, branch TEXT DEFAULT 'Coimbatore HQ', active INTEGER DEFAULT 1);
+  CREATE TABLE IF NOT EXISTS employees (id TEXT PRIMARY KEY, display_name TEXT NOT NULL, email TEXT, employee_id TEXT, job_title TEXT, department TEXT, role TEXT, branch TEXT DEFAULT 'Coimbatore', active INTEGER DEFAULT 1);
   CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL, active INTEGER DEFAULT 1);
   CREATE TABLE IF NOT EXISTS brands (id TEXT PRIMARY KEY, name TEXT NOT NULL, category_id TEXT, active INTEGER DEFAULT 1);
   CREATE TABLE IF NOT EXISTS vendors (id TEXT PRIMARY KEY, name TEXT NOT NULL, address TEXT, pincode TEXT, gstin TEXT, description TEXT, active INTEGER DEFAULT 1);
@@ -35,7 +35,53 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sla (id TEXT PRIMARY KEY, category TEXT, priority TEXT, hours INTEGER DEFAULT 24, active INTEGER DEFAULT 1);
   CREATE TABLE IF NOT EXISTS activity (id TEXT PRIMARY KEY, title TEXT, detail TEXT, created_at TEXT NOT NULL);
 `);
-try { db.exec("ALTER TABLE employees ADD COLUMN branch TEXT DEFAULT 'Coimbatore HQ'"); } catch {}
+try { db.exec("ALTER TABLE employees ADD COLUMN branch TEXT DEFAULT 'Coimbatore'"); } catch {}
+
+// Normalize legacy branch and department strings in database
+try {
+  db.exec(`
+    UPDATE employees SET department = 'Executive Management' WHERE id = 'local-admin' OR department IN ('Executive', 'Admin');
+    UPDATE employees SET department = 'Intelligent Secure Productivity Group' WHERE department IN ('Engineering', 'Design', 'Software');
+    UPDATE employees SET department = 'Cyber Security Solution Group' WHERE department = 'IT';
+    UPDATE employees SET department = 'Corporate Services' WHERE department IN ('People Operations', 'Finance', 'HR');
+    UPDATE employees SET department = 'Operations' WHERE department IN ('Customer Success', 'Workplace', 'Facility');
+    UPDATE employees SET department = 'AWS SBU', branch = 'Chennai' WHERE id = 'emp-sarah';
+    UPDATE employees SET department = 'Accelerated Intelligence Group', branch = 'Coimbatore' WHERE id = 'emp-emily';
+    UPDATE employees SET department = 'Azure SBU', branch = 'Pune' WHERE id = 'emp-david';
+    UPDATE employees SET department = 'Hybrid Cloud & Digital Work', branch = 'Bangalore' WHERE id = 'emp-john';
+    UPDATE employees SET department = 'Cyber Security Solution Group', branch = 'Bangalore' WHERE id = 'emp-alex';
+    UPDATE employees SET department = 'Enterprise AI & Cloud Group', branch = 'Mumbai' WHERE id = 'emp-rahul';
+    UPDATE employees SET department = 'Google SBU', branch = 'Kochin' WHERE id = 'emp-ananya';
+    UPDATE employees SET department = 'Operations', branch = 'Kochin' WHERE id = 'emp-vikram';
+    UPDATE employees SET department = 'Intelligent Secure Productivity Group', branch = 'Bangalore' WHERE id = 'emp-michael';
+    UPDATE employees SET department = 'Cyber Security Solution Group', branch = 'Coimbatore' WHERE id = 'emp-arjun';
+    UPDATE employees SET department = 'Corporate Services', branch = 'Chennai' WHERE id = 'emp-priya';
+    UPDATE employees SET department = 'Operations', branch = 'Coimbatore' WHERE id = 'emp-jessica';
+
+    UPDATE employees SET branch = 'Coimbatore' WHERE branch LIKE '%Coimbatore%' OR branch LIKE '%HQ%';
+    UPDATE employees SET branch = 'Bangalore' WHERE branch LIKE '%Bangalore%' OR branch LIKE '%Bengaluru%';
+    UPDATE employees SET branch = 'Chennai' WHERE branch LIKE '%Chennai%';
+    UPDATE employees SET branch = 'Pune' WHERE branch LIKE '%Pune%' OR branch LIKE '%Hyderabad%';
+    UPDATE employees SET branch = 'Mumbai' WHERE branch LIKE '%Mumbai%' OR branch LIKE '%Delhi%';
+    UPDATE employees SET branch = 'Kochin' WHERE branch LIKE '%Kochin%' OR branch LIKE '%Cochin%';
+
+    UPDATE assets SET site = 'Coimbatore', location = 'Coimbatore' WHERE location LIKE '%Coimbatore%' OR site = 'HQ';
+    UPDATE assets SET site = 'Bangalore', location = 'Bangalore' WHERE location LIKE '%Bengaluru%' OR location LIKE '%Bangalore%' OR site IN ('Design Studio', 'Engineering', 'Operations');
+    UPDATE assets SET site = 'Mumbai', location = 'Mumbai' WHERE location LIKE '%Mumbai%' OR site = 'Finance Office';
+    UPDATE assets SET site = 'Chennai', location = 'Chennai' WHERE location LIKE '%Chennai%' OR site = 'Workplace';
+    UPDATE assets SET site = 'Pune', location = 'Pune' WHERE location LIKE '%Pune%';
+    UPDATE assets SET site = 'Kochin', location = 'Kochin' WHERE location LIKE '%Kochin%' OR location LIKE '%Cochin%';
+
+    UPDATE assets SET site = 'Chennai', location = 'Chennai' WHERE (site IS NULL OR site = '') AND assigned_to = 'emp-sarah';
+    UPDATE assets SET site = 'Bangalore', location = 'Bangalore' WHERE (site IS NULL OR site = '') AND assigned_to = 'emp-michael';
+    UPDATE assets SET site = 'Coimbatore', location = 'Coimbatore' WHERE (site IS NULL OR site = '') AND assigned_to = 'emp-emily';
+    UPDATE assets SET site = 'Pune', location = 'Pune' WHERE (site IS NULL OR site = '') AND assigned_to = 'emp-david';
+    UPDATE assets SET site = 'Chennai', location = 'Chennai' WHERE (site IS NULL OR site = '') AND assigned_to = 'emp-priya';
+    UPDATE assets SET site = 'Coimbatore', location = 'Coimbatore' WHERE site IS NULL OR site = '';
+  `);
+} catch (e) {
+  console.warn("Branch/Department normalization notice:", e.message);
+}
 
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -46,19 +92,20 @@ const body = (req) => req.body && typeof req.body === "object" ? req.body : {};
 const requestUser = (req) => body(req).requestedByUserId || body(req).createdByUserId || body(req).userId || "local-admin";
 
 function seed() {
-  if (db.prepare("SELECT COUNT(*) AS n FROM employees").get().n < 5) {
-    const addEmployee = db.prepare("INSERT OR REPLACE INTO employees (id,display_name,email,employee_id,job_title,department,role,branch) VALUES (?,?,?,?,?,?,?,?)");
-    addEmployee.run("local-admin", "Local Asset Administrator", "local.admin@localhost", "LOCAL-001", "Asset Administrator", "IT", "Administrator", "Coimbatore HQ");
-    addEmployee.run("local-employee", "Local Employee", "employee@localhost", "LOCAL-002", "Software Engineer", "Engineering", "Employee", "Coimbatore HQ");
-    addEmployee.run("local-manager", "Local Manager", "manager@localhost", "LOCAL-003", "Engineering Manager", "Engineering", "Manager", "Coimbatore HQ");
-    addEmployee.run("emp-john", "John Anderson", "john.anderson@quadrasystems.net", "QRA-1004", "Senior DevOps Engineer", "Engineering", "Employee", "Bangalore Tech Hub");
-    addEmployee.run("emp-sarah", "Sarah Connor", "sarah.connor@quadrasystems.net", "QRA-1005", "Staff Product Manager", "Product", "Employee", "Chennai Branch");
-    addEmployee.run("emp-emily", "Emily Davis", "emily.davis@quadrasystems.net", "QRA-1006", "Lead UI/UX Designer", "Design", "Employee", "Coimbatore HQ");
-    addEmployee.run("emp-david", "David Miller", "david.miller@quadrasystems.net", "QRA-1007", "Solutions Architect", "IT", "Employee", "Hyderabad Branch");
-    addEmployee.run("emp-priya", "Priya Sharma", "priya.sharma@quadrasystems.net", "QRA-1008", "Talent Acquisition Lead", "HR", "Employee", "Chennai Branch");
-    addEmployee.run("emp-alex", "Alex Chen", "alex.chen@quadrasystems.net", "QRA-1009", "Security Engineer", "IT", "Employee", "Bangalore Tech Hub");
-    addEmployee.run("emp-rahul", "Rahul Verma", "rahul.verma@quadrasystems.net", "QRA-1010", "Account Executive", "Sales", "Employee", "Hyderabad Branch");
-  }
+  const addEmployee = db.prepare("INSERT OR REPLACE INTO employees (id,display_name,email,employee_id,job_title,department,role,branch) VALUES (?,?,?,?,?,?,?,?)");
+  addEmployee.run("local-admin", "Local Asset Administrator", "local.admin@localhost", "LOCAL-001", "Asset Administrator", "Executive Management", "Administrator", "Coimbatore");
+  addEmployee.run("local-employee", "Local Employee", "employee@localhost", "LOCAL-002", "Software Engineer", "Intelligent Secure Productivity Group", "Employee", "Coimbatore");
+  addEmployee.run("local-manager", "Local Manager", "manager@localhost", "LOCAL-003", "Engineering Manager", "Intelligent Secure Productivity Group", "Manager", "Coimbatore");
+  addEmployee.run("emp-john", "John Anderson", "john.anderson@quadrasystems.net", "QRA-1004", "Senior DevOps Engineer", "Hybrid Cloud & Digital Work", "Employee", "Bangalore");
+  addEmployee.run("emp-sarah", "Sarah Connor", "sarah.connor@quadrasystems.net", "QRA-1005", "Staff Solutions Architect", "AWS SBU", "Employee", "Chennai");
+  addEmployee.run("emp-emily", "Emily Davis", "emily.davis@quadrasystems.net", "QRA-1006", "Principal AI Architect", "Accelerated Intelligence Group", "Employee", "Coimbatore");
+  addEmployee.run("emp-david", "David Miller", "david.miller@quadrasystems.net", "QRA-1007", "Cloud Infrastructure Lead", "Azure SBU", "Employee", "Pune");
+  addEmployee.run("emp-priya", "Priya Sharma", "priya.sharma@quadrasystems.net", "QRA-1008", "Corporate HR & Talent Lead", "Corporate Services", "Employee", "Chennai");
+  addEmployee.run("emp-alex", "Alex Chen", "alex.chen@quadrasystems.net", "QRA-1009", "Lead Security Engineer", "Cyber Security Solution Group", "Employee", "Bangalore");
+  addEmployee.run("emp-rahul", "Rahul Verma", "rahul.verma@quadrasystems.net", "QRA-1010", "Enterprise Cloud Specialist", "Enterprise AI & Cloud Group", "Employee", "Mumbai");
+  addEmployee.run("emp-ananya", "Ananya Iyer", "ananya.iyer@quadrasystems.net", "QRA-1011", "Google Cloud Architect", "Google SBU", "Employee", "Kochin");
+  addEmployee.run("emp-vikram", "Vikram Nair", "vikram.nair@quadrasystems.net", "QRA-1012", "Operations Director", "Operations", "Manager", "Kochin");
+
   if (db.prepare("SELECT COUNT(*) AS n FROM categories").get().n === 0) {
     const add = db.prepare("INSERT INTO categories (id,name,type) VALUES (?,?,?)");
     add.run("cat-laptop", "Laptop", "IT"); 
@@ -78,31 +125,33 @@ function seed() {
   if (db.prepare("SELECT COUNT(*) AS n FROM vendors").get().n === 0) {
     const add = db.prepare("INSERT INTO vendors (id,name,address,pincode,gstin,description) VALUES (?,?,?,?,?,?)");
     add.run("vendor-apple", "Apple Enterprise India", "Bengaluru Tech Park", "560001", "GST-APPLE-001", "Corporate hardware supply");
-    add.run("vendor-01", "Local Technology Supplies", "Coimbatore IT Park", "641001", "33AABCL1234F1Z5", "Enterprise IT and hardware supplier");
+    add.run("vendor-01", "Quadra2 Technologies", "Coimbatore IT Park", "641001", "33AABCL1234F1Z5", "Enterprise IT and hardware supplier");
     add.run("vendor-office", "Office Systems Partners", "Coimbatore Commercial Suite", "641018", "GST-OFFICE-003", "Print and meeting-room equipment");
     add.run("vendor-workplace", "Workplace Essentials", "Chennai Industrial Estate", "600018", "GST-WORK-002", "Furniture and facilities supplier");
   }
-  if (db.prepare("SELECT COUNT(*) AS n FROM assets").get().n < 6) {
-    const addAsset = db.prepare("INSERT OR REPLACE INTO assets (id,asset_name,description,tag_id,category,brand,model,serial_no,location,site,cost,status,assigned_to,purchased_date,expire_date,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-    addAsset.run("demo-ast-001", 'MacBook Pro 16"', "M2 Max, 32GB RAM", "AST-001", "Laptop", "Apple", 'MacBook Pro 16"', "C02G40L3MD6R", "HQ - Floor 3", "Coimbatore HQ", 2499, "Assigned", "emp-john", "2023-01-15", "2026-01-15", now());
-    addAsset.run("demo-ast-002", "Dell XPS 15", "Intel i9, 32GB RAM", "AST-002", "Laptop", "Dell", "XPS 15 9520", "DLXPS15-992", "Chennai Office - Floor 2", "Chennai Branch", 1999, "Assigned", "emp-sarah", "2023-03-22", "2026-03-22", now());
-    addAsset.run("demo-ast-003", "iPhone 13 Pro", "256GB Sierra Blue", "AST-003", "Mobile", "Apple", "iPhone 13 Pro", "F2LZ79010D9", "Hyderabad Hub - Floor 1", "Hyderabad Branch", 1099, "Reserved", null, "2023-01-10", "2025-01-10", now());
-    addAsset.run("demo-ast-004", "Dell U2720Q Monitor", "4K UHD IPS USB-C", "AST-004", "Monitor", "Dell", "U2720Q", "CN049182749", "HQ - Floor 1", "Coimbatore HQ", 650, "Assigned", "emp-emily", "2022-11-05", "2025-11-05", now());
-    addAsset.run("demo-ast-005", "Bose QuietComfort 45", "Noise Cancelling Headphones", "AST-005", "Headphone", "Bose", "QC45", "BSQC45-8831", "Storage Room B", "Bangalore Tech Hub", 329, "In Stock", null, "2023-06-18", "2025-06-18", now());
-    addAsset.run("demo-ast-006", "HP LaserJet Pro", "Multi-function Office Printer", "AST-006", "Printer", "HP", "M428fdw", "HPPRNT-4402", "HQ - Floor 2", "Chennai Branch", 450, "Under Maintenance", null, "2022-09-30", "2024-09-30", now());
-    addAsset.run("demo-ast-007", "ThinkPad X1 Carbon Gen 11", "Intel Core i7 13th Gen, 32GB RAM, 1TB SSD", "AST-007", "Laptop", "Lenovo", "X1 Carbon Gen 11", "LN-X1C-9921", "IT Staging Room", "Bangalore Tech Hub", 1850, "In Stock", null, "2024-01-12", "2027-01-12", now());
-    addAsset.run("demo-ast-008", "Apple Studio Display 27\"", "5K Retina Display with Center Stage", "AST-008", "Monitor", "Apple", "Studio Display", "AP-SD-5541", "Hyderabad Design Suite", "Hyderabad Branch", 1599, "In Stock", null, "2023-08-20", "2026-08-20", now());
-    addAsset.run("demo-ast-009", "Logitech MX Master 3S Combo", "Ergonomic Performance Keyboard and Mouse", "AST-009", "Accessory", "Logitech", "MX Keys + Master 3S", "LG-MX-8832", "IT Storage Shelf A", "Coimbatore HQ", 220, "In Stock", null, "2024-02-01", "2026-02-01", now());
-    addAsset.run("demo-ast-010", "Samsung Galaxy S24 Ultra", "512GB Titanium Grey Enterprise Edition", "AST-010", "Mobile", "Samsung", "S24 Ultra", "SM-S928B-01", "Device Locker 3", "Bangalore Tech Hub", 1299, "In Stock", null, "2024-03-10", "2026-03-10", now());
-    addAsset.run("demo-nonit-001", "Steelcase Gesture Ergonomic Chair", "3D liveback lumbar support, headrest", "QNonIT-000001", "Furniture", "Steelcase", "Gesture 3D", "SC-GEST-01", "Engineering Bay Floor 3", "Coimbatore HQ", 950, "In Stock", null, "2023-04-15", "2028-04-15", now());
-    addAsset.run("demo-nonit-002", "Herman Miller Aeron Chair", "Mineral Mesh, PostureFit SL, Size B", "QNonIT-000002", "Furniture", "Herman Miller", "Aeron Remastered", "HM-AER-02", "Product Suite Floor 2", "Chennai Branch", 1395, "Assigned", "emp-sarah", "2023-05-10", "2028-05-10", now());
-    addAsset.run("demo-nonit-003", "Epson PowerLite Conference Projector", "6000 lumens laser, WUXGA wireless", "QNonIT-000003", "Projector", "Epson", "EB-L630U", "EP-PRJ-03", "Boardroom Alpha", "Bangalore Tech Hub", 2400, "In Stock", null, "2023-09-01", "2027-09-01", now());
-  }
+
+  const addAsset = db.prepare("INSERT OR REPLACE INTO assets (id,asset_name,description,tag_id,category,brand,model,serial_no,location,site,cost,status,assigned_to,purchased_date,expire_date,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+  // AST00023 - Exact match for Sample Screenshot 1 & 2
+  addAsset.run("demo-ast-023", "HP Laptop", "14-inch Enterprise Business Laptop, 16GB RAM", "AST00023", "Laptop", "HP", "121", "1709", "Coimbatore - Floor 2", "Coimbatore", 45000, "Lost", null, "2026-08-31", "2027-08-31", "2026-08-31T09:30:00.000Z");
+  addAsset.run("demo-ast-001", 'MacBook Pro 16"', "M2 Max, 32GB RAM", "AST-001", "Laptop", "Apple", 'MacBook Pro 16"', "C02G40L3MD6R", "Coimbatore - Floor 3", "Coimbatore", 2499, "Assigned", "emp-john", "2026-09-01", "2029-09-01", "2026-09-01T10:00:00.000Z");
+  addAsset.run("demo-ast-002", "Dell XPS 15", "Intel i9, 32GB RAM", "AST-002", "Laptop", "Dell", "XPS 15 9520", "DLXPS15-992", "Chennai Office - Floor 2", "Chennai", 1999, "Assigned", "emp-sarah", "2026-09-03", "2029-09-03", "2026-09-03T11:00:00.000Z");
+  addAsset.run("demo-ast-003", "iPhone 15 Pro", "256GB Titanium Blue", "AST-003", "Mobile", "Apple", "iPhone 15 Pro", "F2LZ79010D9", "Pune Tech Hub - Floor 1", "Pune", 1099, "Reserved", null, "2026-09-05", "2028-09-05", "2026-09-05T14:20:00.000Z");
+  addAsset.run("demo-ast-004", "Dell U2720Q Monitor", "4K UHD IPS USB-C", "AST-004", "Monitor", "Dell", "U2720Q", "CN049182749", "Coimbatore - Floor 1", "Coimbatore", 650, "Assigned", "emp-emily", "2026-08-25", "2029-08-25", "2026-08-25T10:00:00.000Z");
+  addAsset.run("demo-ast-005", "Bose QuietComfort 45", "Noise Cancelling Headphones", "AST-005", "Headphone", "Bose", "QC45", "BSQC45-8831", "Bangalore Innovation Lab", "Bangalore", 329, "In Stock", null, "2026-09-08", "2028-09-08", "2026-09-08T09:15:00.000Z");
+  addAsset.run("demo-ast-006", "HP LaserJet Pro", "Multi-function Office Printer", "AST-006", "Printer", "HP", "M428fdw", "HPPRNT-4402", "Chennai Facility Floor 1", "Chennai", 450, "Under Maintenance", null, "2026-08-15", "2028-08-15", "2026-08-15T08:00:00.000Z");
+  addAsset.run("demo-ast-007", "ThinkPad X1 Carbon Gen 11", "Intel Core i7 13th Gen, 32GB RAM, 1TB SSD", "AST-007", "Laptop", "Lenovo", "X1 Carbon Gen 11", "LN-X1C-9921", "Bangalore Tech Hub", "Bangalore", 1850, "In Stock", null, "2026-09-02", "2029-09-02", "2026-09-02T13:00:00.000Z");
+  addAsset.run("demo-ast-008", "Apple Studio Display 27\"", "5K Retina Display with Center Stage", "AST-008", "Monitor", "Apple", "Studio Display", "AP-SD-5541", "Mumbai Cloud Center", "Mumbai", 1599, "In Stock", null, "2026-09-04", "2029-09-04", "2026-09-04T16:00:00.000Z");
+  addAsset.run("demo-ast-009", "Logitech MX Master 3S Combo", "Ergonomic Performance Keyboard and Mouse", "AST-009", "Accessory", "Logitech", "MX Keys + Master 3S", "LG-MX-8832", "Kochin Harbor Center", "Kochin", 220, "In Stock", null, "2026-09-06", "2028-09-06", "2026-09-06T11:30:00.000Z");
+  addAsset.run("demo-ast-010", "Samsung Galaxy S24 Ultra", "512GB Titanium Grey Enterprise Edition", "AST-010", "Mobile", "Samsung", "S24 Ultra", "SM-S928B-01", "Pune Secure Lab", "Pune", 1299, "In Stock", null, "2026-09-07", "2028-09-07", "2026-09-07T12:00:00.000Z");
+  addAsset.run("demo-nonit-001", "Steelcase Gesture Ergonomic Chair", "3D liveback lumbar support, headrest", "QNonIT-000001", "Furniture", "Steelcase", "Gesture 3D", "SC-GEST-01", "Coimbatore Bay Floor 3", "Coimbatore", 950, "In Stock", null, "2026-08-20", "2031-08-20", "2026-08-20T10:00:00.000Z");
+  addAsset.run("demo-nonit-002", "Herman Miller Aeron Chair", "Mineral Mesh, PostureFit SL, Size B", "QNonIT-000002", "Furniture", "Herman Miller", "Aeron Remastered", "HM-AER-02", "Chennai Suite Floor 2", "Chennai", 1395, "Assigned", "emp-sarah", "2026-08-22", "2031-08-22", "2026-08-22T10:00:00.000Z");
+  addAsset.run("demo-nonit-003", "Epson PowerLite Conference Projector", "6000 lumens laser, WUXGA wireless", "QNonIT-000003", "Projector", "Epson", "EB-L630U", "EP-PRJ-03", "Bangalore Boardroom Alpha", "Bangalore", 2400, "In Stock", null, "2026-09-01", "2030-09-01", "2026-09-01T15:00:00.000Z");
+
   if (db.prepare("SELECT COUNT(*) AS n FROM requests").get().n === 0) {
     const addReq = db.prepare("INSERT INTO requests (id,request_number,type,requested_by,category,description,status,created_at) VALUES (?,?,?,?,?,?,?,?)");
-    addReq.run("req-miracle-01", "REQ-2026-101", "Asset", "emp-john", "Laptop", "Laptop i5 - 16gb ram", "Pending", now());
-    addReq.run("req-tatiana-02", "REQ-2026-102", "Asset", "emp-sarah", "Headphone", "Headphone", "Pending", now());
-    addReq.run("req-alfonso-03", "REQ-2026-103", "Asset", "emp-emily", "Laptop", "Laptop i5 - 16gb ram", "Pending", now());
+    addReq.run("req-miracle-01", "REQ-2026-101", "New Asset", "emp-john", "Laptop", "High-performance development laptop with 32GB RAM", "Pending", now());
+    addReq.run("req-tatiana-02", "REQ-2026-102", "New Asset", "emp-sarah", "Headphone", "Noise-cancelling headset for client architecture calls", "Pending", now());
+    addReq.run("req-alfonso-03", "REQ-2026-103", "Upgrade", "emp-emily", "Laptop", "RAM and SSD upgrade for local AI model inference", "Pending", now());
   }
 }
 seed();
@@ -115,7 +164,7 @@ function assetRow(row) {
     ID: row.id, AssetName: row.asset_name, Description: row.description, AssetTagID: row.tag_id,
     IsAssigned: row.status === "Assigned", PurchasedDate: row.purchased_date, Brand: row.brand, BrandName: row.brand,
     Cost: row.cost, Model: row.model, SerialNo: row.serial_no, Location: row.location, LocationName: row.location,
-    Category: row.category, Site: row.site || "Coimbatore HQ", Branch: row.site || "Coimbatore HQ", AssetPhotoURL: [], ExpireDate: row.expire_date, VendorID: row.vendor_id,
+    Category: row.category, Site: row.site || "Coimbatore", Branch: row.site || "Coimbatore", AssetPhotoURL: [], ExpireDate: row.expire_date, VendorID: row.vendor_id,
     VendorName: vendor?.name || null, SupportDocsURL: [], Status: row.status, CreatedAt: row.created_at, CreatedBy: "local-admin",
     ModifiedAt: null, ModifiedBy: null, AssignedToUserID: row.assigned_to, AssignedToName: assigned?.display_name || null,
     AssignedToDepartment: assigned?.department || null, LostByUserID: null, LostByName: null, LostRequestNumber: null,
@@ -123,7 +172,7 @@ function assetRow(row) {
 }
 function employeeRow(row) {
   if (!row) return null;
-  return { ID: row.id, DisplayName: row.display_name, Mail: row.email, EmployeeId: row.employee_id, JobTitle: row.job_title, Department: row.department, AssetRole: row.role, AssetRoleName: row.role, Branch: row.branch || "Coimbatore HQ" };
+  return { ID: row.id, DisplayName: row.display_name, Mail: row.email, EmployeeId: row.employee_id, JobTitle: row.job_title, Department: row.department, AssetRole: row.role, AssetRoleName: row.role, Branch: row.branch || "Coimbatore" };
 }
 function requestRow(row) {
   if (!row) return null;
@@ -536,27 +585,104 @@ app.put("/asset/sla-configuration/:id", (req,res)=>{
 app.get("/asset/reports", (req,res)=>{
   const branch=String(req.query.branch||"").trim();
   const hasBranch = branch && branch !== "All" && branch !== "All Branches";
-  const bFilter = hasBranch ? " AND COALESCE(site, location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : "";
+  const bFilter = hasBranch ? " AND COALESCE(site, location, 'Coimbatore') LIKE '%' || ? || '%' " : "";
   const bParam = hasBranch ? [branch] : [];
 
   const total=db.prepare(`SELECT COUNT(*) n,COALESCE(SUM(cost),0) value FROM assets WHERE 1=1 ${bFilter}`).get(...bParam);
   const assigned=db.prepare(`SELECT COUNT(*) n FROM assets WHERE status='Assigned' ${bFilter}`).get(...bParam).n;
   const repair=db.prepare(`SELECT COUNT(*) n FROM assets WHERE status='Under Maintenance' ${bFilter}`).get(...bParam).n;
-  const itCount=db.prepare(`SELECT COUNT(*) n FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : ""}`).get(...bParam).n;
+  const itCount=db.prepare(`SELECT COUNT(*) n FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore') LIKE '%' || ? || '%' " : ""}`).get(...bParam).n;
   const nonItCount=total.n-itCount;
-  const monthlyPurchases=db.prepare(`SELECT substr(purchased_date,1,7) AS month, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' THEN 1 ELSE 0 END) AS it_count, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' THEN COALESCE(a.cost,0) ELSE 0 END) AS it_cost, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN 1 ELSE 0 END) AS non_it_count, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN COALESCE(a.cost,0) ELSE 0 END) AS non_it_value FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE purchased_date IS NOT NULL ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : ""} GROUP BY substr(purchased_date,1,7) ORDER BY month DESC LIMIT 12`).all(...bParam);
-  const stockStatusSummary=db.prepare(`SELECT CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN 'Non-IT' ELSE 'IT' END AS asset_kind,a.category,COALESCE(a.site, a.location, 'Coimbatore HQ') AS branch,a.status,COUNT(*) AS asset_count,COALESCE(SUM(a.cost),0) AS total_cost FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE 1=1 ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : ""} GROUP BY asset_kind,a.category,branch,a.status ORDER BY asset_kind,a.category,branch,a.status`).all(...bParam);
-  const assignmentByDepartment=db.prepare(`SELECT COALESCE(e.department,'Unassigned') AS department,COUNT(*) AS assigned_count FROM assets a LEFT JOIN employees e ON e.id=a.assigned_to WHERE a.status='Assigned' ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : ""} GROUP BY COALESCE(e.department,'Unassigned') ORDER BY assigned_count DESC,department`).all(...bParam);
-  const requestVolume={NewRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Asset'").get().n,RepairRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Repair'").get().n,UpgradeRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Upgrade'").get().n,HRRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='HR'").get().n};
+  const monthlyPurchases=db.prepare(`SELECT substr(purchased_date,1,7) AS month, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' THEN 1 ELSE 0 END) AS it_count, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='IT' THEN COALESCE(a.cost,0) ELSE 0 END) AS it_cost, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN 1 ELSE 0 END) AS non_it_count, SUM(CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN COALESCE(a.cost,0) ELSE 0 END) AS non_it_value FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE purchased_date IS NOT NULL ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore') LIKE '%' || ? || '%' " : ""} GROUP BY substr(purchased_date,1,7) ORDER BY month DESC LIMIT 12`).all(...bParam);
+  const stockStatusSummary=db.prepare(`SELECT CASE WHEN COALESCE(c.type,CASE WHEN a.category='Furniture' THEN 'Non-IT' ELSE 'IT' END)='Non-IT' THEN 'Non-IT' ELSE 'IT' END AS asset_kind,a.category,COALESCE(a.site, a.location, 'Coimbatore') AS branch,a.status,COUNT(*) AS asset_count,COALESCE(SUM(a.cost),0) AS total_cost FROM assets a LEFT JOIN categories c ON c.id=a.category_id WHERE 1=1 ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore') LIKE '%' || ? || '%' " : ""} GROUP BY asset_kind,a.category,branch,a.status ORDER BY asset_kind,a.category,branch,a.status`).all(...bParam);
+  const canonicalDepartments = [
+    "Operations",
+    "Intelligent Secure Productivity Group",
+    "Hybrid Cloud & Digital Work",
+    "Google SBU",
+    "Executive Management",
+    "Enterprise AI & Cloud Group",
+    "Cyber Security Solution Group",
+    "Corporate Services",
+    "AWS SBU",
+    "Azure SBU",
+    "Accelerated Intelligence Group",
+  ];
+  const deptMap = new Map();
+  canonicalDepartments.forEach((d) => {
+    deptMap.set(d, { Department: d, AssignedCount: 0 });
+  });
+  const rawDeptRows = db.prepare(`SELECT COALESCE(e.department,'Unassigned') AS department,COUNT(*) AS assigned_count FROM assets a LEFT JOIN employees e ON e.id=a.assigned_to WHERE a.status='Assigned' ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore') LIKE '%' || ? || '%' " : ""} GROUP BY COALESCE(e.department,'Unassigned')`).all(...bParam);
+  rawDeptRows.forEach((r) => {
+    const rawDept = (r.department || "").trim();
+    let matchedDept = canonicalDepartments.find((c) => c.toLowerCase() === rawDept.toLowerCase());
+    if (!matchedDept) {
+      const lower = rawDept.toLowerCase();
+      if (lower.includes("accelerat") || lower.includes("aig")) matchedDept = "Accelerated Intelligence Group";
+      else if (lower.includes("enterprise ai") || lower.includes("eaic") || lower.includes("ai & cloud")) matchedDept = "Enterprise AI & Cloud Group";
+      else if (lower.includes("hybrid") || lower.includes("digital work") || lower.includes("hcdw") || lower.includes("devops")) matchedDept = "Hybrid Cloud & Digital Work";
+      else if (lower.includes("cyber") || lower.includes("security") || lower.includes("infosec") || lower.includes("soc")) matchedDept = "Cyber Security Solution Group";
+      else if (lower.includes("google") || lower.includes("gcp")) matchedDept = "Google SBU";
+      else if (lower.includes("aws") || lower.includes("amazon")) matchedDept = "AWS SBU";
+      else if (lower.includes("azure") || lower.includes("microsoft")) matchedDept = "Azure SBU";
+      else if (lower.includes("executive") || lower.includes("leadership") || lower.includes("cxo") || lower.includes("director")) matchedDept = "Executive Management";
+      else if (lower.includes("productivity") || lower.includes("ispg") || lower.includes("engineering") || lower.includes("software")) matchedDept = "Intelligent Secure Productivity Group";
+      else if (lower.includes("corporate") || lower.includes("finance") || lower.includes("legal") || lower.includes("admin")) matchedDept = "Corporate Services";
+      else if (lower.includes("operation") || lower.includes("ops") || lower.includes("facility") || lower.includes("sales") || lower.includes("marketing")) matchedDept = "Operations";
+      else matchedDept = "Operations";
+    }
+    const cur = deptMap.get(matchedDept) || { Department: matchedDept, AssignedCount: 0 };
+    cur.AssignedCount += Number(r.assigned_count || 0);
+    deptMap.set(matchedDept, cur);
+  });
+  const assignmentByDepartment = Array.from(deptMap.values()).sort((a, b) => b.AssignedCount - a.AssignedCount || a.Department.localeCompare(b.Department));
+
+  const requestVolume={NewRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Asset' OR type='New Asset'").get().n,RepairRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Repair'").get().n,UpgradeRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='Upgrade'").get().n,HRRequestCount:db.prepare("SELECT COUNT(*) n FROM requests WHERE type='HR'").get().n};
   const available=db.prepare(`SELECT COUNT(*) n FROM assets WHERE status IN ('In Stock','Reserved') ${bFilter}`).get(...bParam).n;
-  const branchRows = db.prepare("SELECT COALESCE(site, location, 'Coimbatore HQ') AS branch, COUNT(*) AS total_assets, SUM(CASE WHEN status='Assigned' THEN 1 ELSE 0 END) AS assigned_assets, SUM(CASE WHEN status IN ('In Stock','Reserved') THEN 1 ELSE 0 END) AS unassigned_assets, SUM(CASE WHEN status='Under Maintenance' THEN 1 ELSE 0 END) AS maintenance_assets, ROUND(SUM(CASE WHEN status='Assigned' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*), 1) AS utilization_rate FROM assets GROUP BY branch ORDER BY total_assets DESC").all();
-  json(res,{kpi:{TotalAssetValue:total.value,AssetsAssignedCount:assigned,AvailableStockCount:available,UnderRepairCount:repair,TotalITAssetCount:itCount,TotalNonITAssetCount:nonItCount},monthlyPurchases:monthlyPurchases.map(r=>({MonthLabel:r.month,ITCount:r.it_count||0,ITCost:r.it_cost||0,NonITCount:r.non_it_count||0,NonITValue:r.non_it_value||0})),stockStatusSummary:stockStatusSummary.map(r=>({AssetKind:r.asset_kind,CategoryName:r.category,Branch:r.branch,Status:r.status,AssetCount:r.asset_count,TotalCost:r.total_cost})),assignmentByDepartment:assignmentByDepartment.map(r=>({Department:r.department,AssignedCount:r.assigned_count})),requestVolume,branchDistribution:branchRows});
+  const canonicalBranches = ["Coimbatore", "Chennai", "Bangalore", "Pune", "Mumbai", "Kochin"];
+  const branchMap = new Map();
+  canonicalBranches.forEach((b) => {
+    branchMap.set(b, { branch: b, total_assets: 0, assigned_assets: 0, unassigned_assets: 0, maintenance_assets: 0, utilization_rate: 0 });
+  });
+  const rawBranchRows = db.prepare("SELECT COALESCE(site, location, 'Coimbatore') AS branch, COUNT(*) AS total_assets, SUM(CASE WHEN status='Assigned' THEN 1 ELSE 0 END) AS assigned_assets, SUM(CASE WHEN status IN ('In Stock','Reserved') THEN 1 ELSE 0 END) AS unassigned_assets, SUM(CASE WHEN status='Under Maintenance' THEN 1 ELSE 0 END) AS maintenance_assets, ROUND(SUM(CASE WHEN status='Assigned' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*), 1) AS utilization_rate FROM assets GROUP BY branch ORDER BY total_assets DESC").all();
+  rawBranchRows.forEach((r) => {
+    let bName = canonicalBranches.find((c) => c.toLowerCase() === (r.branch || "").toLowerCase());
+    if (!bName) {
+      const lower = (r.branch || "").toLowerCase();
+      if (lower.includes("coimbatore") || lower === "hq") bName = "Coimbatore";
+      else if (lower.includes("chennai") || lower.includes("workplace")) bName = "Chennai";
+      else if (lower.includes("bangalore") || lower.includes("bengaluru") || lower.includes("design") || lower.includes("engineering")) bName = "Bangalore";
+      else if (lower.includes("pune")) bName = "Pune";
+      else if (lower.includes("mumbai") || lower.includes("finance")) bName = "Mumbai";
+      else if (lower.includes("kochin") || lower.includes("cochin")) bName = "Kochin";
+      else bName = "Coimbatore";
+    }
+    const cur = branchMap.get(bName) || { branch: bName, total_assets: 0, assigned_assets: 0, unassigned_assets: 0, maintenance_assets: 0, utilization_rate: 0 };
+    cur.total_assets += Number(r.total_assets || 0);
+    cur.assigned_assets += Number(r.assigned_assets || 0);
+    cur.unassigned_assets += Number(r.unassigned_assets || 0);
+    cur.maintenance_assets += Number(r.maintenance_assets || 0);
+    cur.utilization_rate = cur.total_assets > 0 ? Math.round((cur.assigned_assets * 100.0) / cur.total_assets) : 0;
+    branchMap.set(bName, cur);
+  });
+  const branchRows = Array.from(branchMap.values()).sort((a, b) => b.total_assets - a.total_assets);
+  json(res,{kpi:{TotalAssetValue:total.value,AssetsAssignedCount:assigned,AvailableStockCount:available,UnderRepairCount:repair,TotalITAssetCount:itCount,TotalNonITAssetCount:nonItCount},monthlyPurchases:monthlyPurchases.map(r=>({MonthLabel:r.month,ITCount:r.it_count||0,ITCost:r.it_cost||0,NonITCount:r.non_it_count||0,NonITValue:r.non_it_value||0})),stockStatusSummary:stockStatusSummary.map(r=>({AssetKind:r.asset_kind,CategoryName:r.category,Branch:r.branch,Status:r.status,AssetCount:r.asset_count,TotalCost:r.total_cost})),assignmentByDepartment:assignmentByDepartment.map(r=>({Department:r.Department,AssignedCount:r.AssignedCount})),requestVolume,branchDistribution:branchRows});
 });
 app.get("/asset/reports/department-assignments", (req,res)=>{
-  const department=String(req.query.department||"").trim();
+  const rawDepartment=String(req.query.department||"").trim();
   const branch=String(req.query.branch||"").trim();
   const hasBranch = branch && branch !== "All" && branch !== "All Branches";
-  const rows=db.prepare(`SELECT e.id AS user_id,e.display_name,e.email,e.department,COALESCE(a.site, a.location, 'Coimbatore HQ') AS branch,a.id AS asset_id,a.asset_name,a.tag_id,a.category,a.status,a.created_at FROM assets a JOIN employees e ON e.id=a.assigned_to WHERE a.status='Assigned' AND (?='' OR e.department=?) ${hasBranch ? " AND COALESCE(a.site, a.location, 'Coimbatore HQ') LIKE '%' || ? || '%' " : ""} ORDER BY e.display_name,a.asset_name`).all(...(hasBranch ? [department, department, branch] : [department, department]));
+  let deptFilter = "";
+  let params = [];
+  if (rawDepartment && rawDepartment !== "All" && rawDepartment !== "All Departments") {
+    deptFilter = " AND (e.department = ? OR e.department LIKE '%' || ? || '%') ";
+    params.push(rawDepartment, rawDepartment);
+  }
+  if (hasBranch) {
+    deptFilter += " AND COALESCE(a.site, a.location, 'Coimbatore') LIKE '%' || ? || '%' ";
+    params.push(branch);
+  }
+  const rows = db.prepare(`SELECT e.id AS user_id,e.display_name,e.email,e.department,COALESCE(a.site, a.location, 'Coimbatore') AS branch,a.id AS asset_id,a.asset_name,a.tag_id,a.category,a.status,a.created_at FROM assets a JOIN employees e ON e.id=a.assigned_to WHERE a.status='Assigned' ${deptFilter} ORDER BY e.display_name,a.asset_name`).all(...params);
   json(res,rows.map(r=>({UserID:r.user_id,DisplayName:r.display_name,Mail:r.email,Department:r.department,Branch:r.branch,AssetID:r.asset_id,AssetName:r.asset_name,AssetTagID:r.tag_id,Category:r.category,Status:r.status,AssignedAt:r.created_at})));
 });
 

@@ -183,7 +183,9 @@ export const AdminHRRequestSubScreen: React.FC<AdminHRRequestSubScreenProps> = (
             borderRadius: "999px",
             border: "1px solid #E2E8F0",
             gap: "4px",
-            flexWrap: "wrap",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            maxWidth: "100%",
           }}
         >
           {[

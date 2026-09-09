@@ -7,6 +7,11 @@ import {
   Option,
   Spinner,
   Text,
+  Drawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
+  Field,
 } from "@fluentui/react-components";
 import {
   Dismiss24Regular,
@@ -35,15 +40,14 @@ import {
   uploadAssetPhotos,
   uploadAssetDocuments,
 } from "../Services/AssetInventoryService";
+import {
+  CANONICAL_BRANCHES,
+  CANONICAL_DEPARTMENTS,
+  normalizeBranch,
+  normalizeDepartment,
+} from "../../Common/EnterpriseConstants";
 
-const DEFAULT_SITES = [
-  "Coimbatore HQ",
-  "Chennai",
-  "Bangalore",
-  "Hyderabad",
-  "Mumbai",
-  "Delhi NCR",
-];
+const DEFAULT_SITES = [...CANONICAL_BRANCHES];
 
 const DEFAULT_LOCATIONS = [
   "Floor 1 - IT Bay",
@@ -55,16 +59,7 @@ const DEFAULT_LOCATIONS = [
   "Storage Room B",
 ];
 
-const DEFAULT_DEPARTMENTS = [
-  "Engineering",
-  "IT Infrastructure",
-  "Product",
-  "Sales",
-  "Human Resources",
-  "Finance",
-  "Design",
-  "Customer Success",
-];
+const DEFAULT_DEPARTMENTS = [...CANONICAL_DEPARTMENTS];
 
 const DEFAULT_CATEGORIES = [
   "Laptop",
@@ -104,11 +99,11 @@ const emptyForm: AssetInventoryFormData = {
   SerialNo: "",
   Location: "Floor 1 - IT Bay",
   Category: "Laptop",
-  Site: "Coimbatore HQ",
+  Site: "Coimbatore",
   ExpireDate: null,
   VendorID: null,
   Status: "In Stock",
-  Department: "Engineering",
+  Department: "Operations",
 };
 
 interface AssetFormDialogProps {
@@ -175,11 +170,11 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
         SerialNo: asset.SerialNo || "",
         Location: asset.Location || "Floor 1 - IT Bay",
         Category: asset.Category || "Laptop",
-        Site: asset.Site || "Coimbatore HQ",
+        Site: normalizeBranch(asset.Site || asset.Branch || "Coimbatore"),
         ExpireDate: asset.ExpireDate || null,
         VendorID: asset.VendorID || null,
         Status: asset.Status || "In Stock",
-        Department: asset.AssignedToDepartment || "Engineering",
+        Department: normalizeDepartment(asset.AssignedToDepartment || "Operations"),
       });
     } else {
       setForm({
@@ -260,118 +255,64 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
     }
   };
 
-  if (!open) return null;
-
-  const dialogContent = (
-    <div
-      id="asset-form-dialog-backdrop"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.6)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        zIndex: 100000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 16px",
-      }}
-      onClick={() => onOpenChange(false)}
-    >
-      <div
-        id="asset-form-dialog-card"
-        style={{
-          width: "min(740px, 95vw)",
-          maxHeight: "calc(100vh - 80px)",
-          background: "#ffffff",
-          borderRadius: "16px",
-          boxShadow: "0 25px 60px -12px rgba(15, 23, 42, 0.45)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          border: "1px solid #e2e8f0",
-        }}
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <>
+      <Drawer
+        type="overlay"
+        separator
+        open={open}
+        position="end"
+        onOpenChange={(_, data) => onOpenChange(data.open)}
+        style={{ width: "min(680px, 94vw)", background: "#ffffff" }}
       >
-        {/* Modal Header */}
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "#ffffff",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "linear-gradient(135deg, #EBF3FE 0%, #DBEAFE 100%)",
-                color: "#007ED5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 6px rgba(0, 126, 213, 0.12)",
-              }}
-            >
-              <BoxToolboxRegular style={{ fontSize: 22 }} />
-            </div>
-            <div>
-              <Text
-                weight="semibold"
-                style={{ color: "#0f172a", fontSize: 17, display: "block", lineHeight: "22px" }}
+        <DrawerHeader style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 24px" }}>
+          <DrawerHeaderTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="Close dialog"
+                icon={<Dismiss24Regular />}
+                onClick={() => onOpenChange(false)}
+              />
+            }
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, #EBF3FE 0%, #DBEAFE 100%)",
+                  color: "#007ED5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 6px rgba(0, 126, 213, 0.12)",
+                  flexShrink: 0,
+                }}
               >
-                {isEdit ? "Edit IT Asset" : "Add IT Asset"}
-              </Text>
-              <div style={{ fontSize: "12.5px", color: "#64748b", marginTop: 2 }}>
-                Configure hardware specifications, procurement details, and department assignment
+                <BoxToolboxRegular style={{ fontSize: 22 }} />
+              </div>
+              <div>
+                <Text
+                  weight="semibold"
+                  style={{ color: "#0f172a", fontSize: 17, display: "block", lineHeight: "22px" }}
+                >
+                  {isEdit ? "Edit IT Asset" : "Add IT Asset"}
+                </Text>
+                <div style={{ fontSize: "12.5px", color: "#64748b", marginTop: 2 }}>
+                  Configure hardware specifications, procurement details, and department assignment
+                </div>
               </div>
             </div>
-          </div>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
 
-          <button
-            type="button"
-            aria-label="Close dialog"
-            onClick={() => onOpenChange(false)}
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              cursor: "pointer",
-              color: "#64748b",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#fee2e2";
-              e.currentTarget.style.color = "#ef4444";
-              e.currentTarget.style.borderColor = "#fca5a5";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#f8fafc";
-              e.currentTarget.style.color = "#64748b";
-              e.currentTarget.style.borderColor = "#e2e8f0";
-            }}
-          >
-            <Dismiss24Regular style={{ fontSize: 16 }} />
-          </button>
-        </div>
-
-        {/* Modal Body - Scrollable */}
-        <div
+        {/* Drawer Body - Scrollable */}
+        <DrawerBody
           style={{
             flex: 1,
-            overflowY: "auto",
-            padding: "22px 28px",
+            padding: "20px 24px",
             background: "#ffffff",
             display: "flex",
             flexDirection: "column",
@@ -584,9 +525,9 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
                 </label>
                 <Dropdown
                   style={{ width: "100%", borderRadius: 6 }}
-                  value={form.Site || "Coimbatore HQ"}
-                  selectedOptions={form.Site ? [form.Site] : ["Coimbatore HQ"]}
-                  onOptionSelect={(_, d) => handleChange("Site", d.optionValue ?? "Coimbatore HQ")}
+                  value={form.Site || "Coimbatore"}
+                  selectedOptions={form.Site ? [form.Site] : ["Coimbatore"]}
+                  onOptionSelect={(_, d) => handleChange("Site", d.optionValue ?? "Coimbatore")}
                   mountNode={mountNode}
                   placeholder="Select Site"
                 >
@@ -931,12 +872,12 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
               <span>⚠️</span> {error}
             </div>
           )}
-        </div>
 
-        {/* Modal Footer with Cancel & Submit Buttons */}
+        {/* Drawer Footer */}
         <div
           style={{
-            padding: "16px 28px",
+            paddingTop: "16px",
+            marginTop: "auto",
             background: "#ffffff",
             borderTop: "1px solid #e2e8f0",
             display: "flex",
@@ -945,27 +886,14 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
             gap: 12,
           }}
         >
-          <button
-            type="button"
+          <Button
+            appearance="secondary"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            style={{
-              background: "#ffffff",
-              color: "#475569",
-              border: "1px solid #cbd5e1",
-              borderRadius: "9999px",
-              padding: "9px 24px",
-              fontSize: "13.5px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#ffffff")}
+            style={{ borderRadius: "9999px", padding: "8px 22px" }}
           >
             Cancel
-          </button>
-
+          </Button>
           <button
             type="button"
             id="btn-submit-asset"
@@ -992,14 +920,11 @@ const AssetFormDialog: React.FC<AssetFormDialogProps> = ({
             {saving ? <Spinner size="tiny" /> : isEdit ? "Save Changes" : "Create Asset"}
           </button>
         </div>
-      </div>
-      {mountNodePortal}
-    </div>
-  );
-
-  return typeof document !== "undefined"
-    ? createPortal(dialogContent, document.body)
-    : dialogContent;
+      </DrawerBody>
+    </Drawer>
+    {mountNodePortal}
+  </>
+);
 };
 
 export default AssetFormDialog;

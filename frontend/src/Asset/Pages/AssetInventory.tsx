@@ -54,6 +54,7 @@ import {
 } from "../Services/AssetInventoryService";
 import AssetIcon from "../Components/AssetIcon";
 import NonITAssets from "./NonITAssets";
+import { CANONICAL_BRANCHES, normalizeBranch } from "../../Common/EnterpriseConstants";
 
 const NON_IT_CATEGORIES = new Set([
   "furniture", "projector", "facility", "appliances", "fixtures", "vehicles", "desk", "chair", "armchair", "table"
@@ -370,7 +371,7 @@ const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = [
     Location: "HQ - Floor 3",
     LocationName: "Floor 3 - Engineering",
     Category: "Laptop",
-    Site: "Coimbatore HQ",
+    Site: "Coimbatore",
     AssetPhotoURL: [],
     ExpireDate: "2023-12-15",
     VendorID: null,
@@ -442,7 +443,7 @@ const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = [
     Location: "HQ - Floor 1",
     LocationName: "Floor 1 - Design",
     Category: "Monitor",
-    Site: "Coimbatore HQ",
+    Site: "Coimbatore",
     AssetPhotoURL: [],
     ExpireDate: "2023-11-05",
     VendorID: null,
@@ -466,7 +467,7 @@ const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = [
     Location: "Storage Room B",
     LocationName: "Storage Room B",
     Category: "Accessory",
-    Site: "Hyderabad",
+    Site: "Pune",
     AssetPhotoURL: [],
     ExpireDate: "2024-06-18",
     VendorID: null,
@@ -639,26 +640,7 @@ const AssetInventory: React.FC = () => {
   const nonItCount = useMemo(() => assets.filter((a) => isNonITCategory(a.Category)).length, [assets]);
 
   const getBranchName = (asset: AssetInventoryRecord): string => {
-    if (asset.Site && asset.Site.trim().length > 0) {
-      const s = asset.Site.toLowerCase();
-      if (s.includes("coimbatore") || s === "hq") return "Coimbatore HQ";
-      if (s.includes("chennai")) return "Chennai";
-      if (s.includes("bangalore")) return "Bangalore";
-      if (s.includes("hyderabad")) return "Hyderabad";
-      if (s.includes("mumbai")) return "Mumbai";
-      if (s.includes("delhi")) return "Delhi NCR";
-      return asset.Site;
-    }
-    if (asset.LocationName) {
-      const loc = asset.LocationName.toLowerCase();
-      if (loc.includes("coimbatore") || loc.includes("hq")) return "Coimbatore HQ";
-      if (loc.includes("chennai")) return "Chennai";
-      if (loc.includes("bangalore")) return "Bangalore";
-      if (loc.includes("hyderabad")) return "Hyderabad";
-      if (loc.includes("mumbai")) return "Mumbai";
-      if (loc.includes("delhi")) return "Delhi NCR";
-    }
-    return "Coimbatore HQ";
+    return normalizeBranch(asset.Site || asset.LocationName || asset.Location || "Coimbatore");
   };
 
   const filteredAssets = useMemo(() => {
@@ -762,7 +744,7 @@ const AssetInventory: React.FC = () => {
     }
     return ["Laptop", "Mobile", "Monitor", "Headphone", "Printer", "Accessory"];
   }, [activeTab]);
-  const availableBranches = ["Coimbatore HQ", "Chennai", "Bangalore", "Hyderabad", "Mumbai", "Delhi NCR"];
+  const availableBranches = [...CANONICAL_BRANCHES];
   const availableLocations = ["Floor 1 - Design", "Floor 1 - Sales", "Floor 2 - Product", "Floor 2 - Shared Office", "Floor 3 - Engineering", "Storage Room B", "Remote"];
 
   const toggleBranchFilter = (branch: string) => {
@@ -827,28 +809,44 @@ const AssetInventory: React.FC = () => {
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "8px",
-                  background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
-                  color: "#FFFFFF",
+                  gap: "10px",
+                  background: "#FFFFFF",
+                  color: "#0f3d64",
                   borderRadius: "9999px",
-                  border: "none",
-                  padding: "9px 22px",
+                  border: "1px solid #E2E8F0",
+                  padding: "4px 20px 4px 5px",
                   fontSize: "14px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  boxShadow: "0 3px 12px rgba(0, 126, 213, 0.32)",
-                  transition: "all 0.18s ease",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)",
+                  transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 5px 16px rgba(0, 126, 213, 0.42)";
+                  e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 0, 0, 0.09)";
+                  e.currentTarget.style.borderColor = "#CBD5E1";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 126, 213, 0.32)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)";
+                  e.currentTarget.style.borderColor = "#E2E8F0";
                 }}
               >
-                <AddRegular style={{ fontSize: 18, strokeWidth: 2 }} />
+                <span
+                  style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    background: "#007ED5",
+                    color: "#FFFFFF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 6px rgba(0, 126, 213, 0.3)",
+                  }}
+                >
+                  <AddRegular style={{ fontSize: 16, strokeWidth: 2.8 }} />
+                </span>
                 <span>Add Asset</span>
               </button>
             </div>

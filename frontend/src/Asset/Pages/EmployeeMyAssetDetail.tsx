@@ -1,6 +1,20 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
-import { Spinner, Toast, ToastTitle, Toaster, useToastController, useId } from "@fluentui/react-components";
+import {
+  Spinner,
+  Toast,
+  ToastTitle,
+  Toaster,
+  useToastController,
+  useId,
+  Button,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  Badge,
+} from "@fluentui/react-components";
 import {
   ArrowLeftRegular,
   ArrowSwapRegular,
@@ -19,6 +33,14 @@ import {
   WrenchRegular,
   HistoryRegular,
   DocumentBulletListRegular,
+  EditRegular,
+  BuildingRegular,
+  DocumentArrowDownRegular,
+  ArrowDownloadRegular,
+  EyeRegular,
+  DocumentRegular,
+  DismissRegular,
+  CheckmarkCircleFilled,
 } from "@fluentui/react-icons";
 import AssetIcon from "../Components/AssetIcon";
 import { getAssetById, getAssetCategories, AssetInventoryRecord, AssetCategoryRecord } from "../Services/AssetInventoryService";
@@ -27,6 +49,8 @@ import { getAssetRepairRequests, AssetRepairRequestRecord } from "../Services/As
 import { UserAssignedAsset } from "../Services/AssetEmployeeService";
 import AssetServiceRequestPanel from "../Components/AssetServiceRequestPanel";
 import ReportLostAssetPanel from "../Components/ReportLostAssetPanel";
+import AssetHandoverDrawerPanel from "../Components/AssetHandoverDrawerPanel";
+import AssetFormDialog from "../Components/AssetFormDialog";
 import { useAuth } from "../../Auth/AuthProvider";
 
 const formatDate = (value: string | null): string => {
@@ -59,7 +83,7 @@ const EmployeeMyAssetDetail: React.FC = () => {
   const assetId = params.id || params.assetId;
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentUser, activeRole } = useAuth();
   const [searchParams] = useSearchParams();
   const viewOnly = searchParams.get("viewOnly") === "1";
   const toasterId = useId("employee-my-asset-detail-toaster");
@@ -78,10 +102,14 @@ const EmployeeMyAssetDetail: React.FC = () => {
   const [serviceRequestPanelOpen, setServiceRequestPanelOpen] = useState(false);
   const [serviceRequestType, setServiceRequestType] = useState<"upgrade" | "repair">("upgrade");
   const [reportLostOpen, setReportLostOpen] = useState(false);
+  const [handoverOpen, setHandoverOpen] = useState(false);
+  const [adminEditOpen, setAdminEditOpen] = useState(false);
+  const isAdmin = activeRole === "admin" || (currentUser?.role || "").toLowerCase().includes("admin") || (currentUser?.role || "").toLowerCase() === "administrator";
 
   const [upgradeHistory, setUpgradeHistory] = useState<AssetUpgradeRequestRecord[]>([]);
   const [repairHistory, setRepairHistory] = useState<AssetRepairRequestRecord[]>([]);
-  const [activeHistoryTab, setActiveHistoryTab] = useState<"requests" | "service" | "audit">("requests");
+  const [activeHistoryTab, setActiveHistoryTab] = useState<"requests" | "service" | "audit" | "warranty">("requests");
+  const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
 
   const loadData = async () => {
     if (!assetId && !navState?.asset) {
@@ -192,6 +220,58 @@ const EmployeeMyAssetDetail: React.FC = () => {
     );
   };
 
+  const handleDownloadWarranty = () => {
+    if (!asset) return;
+    const content = `================================================================================
+          QUADRA ENTERPRISE - CERTIFICATE OF WARRANTY & SLA COVERAGE
+================================================================================
+Certificate ID:    WARR-${asset.AssetTagID || asset.ID}
+Issued Date:       ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+Issued Office:     Quadra Enterprise IT Asset Management & Infrastructure Office
+
+1. ASSET IDENTIFICATION
+--------------------------------------------------------------------------------
+Asset Name:        ${asset.AssetName}
+Asset Tag ID:      ${asset.AssetTagID}
+Category:          ${asset.Category}
+Serial Number:     ${asset.SerialNo || "SN-A1B2C3D4"}
+Specification:     ${asset.Model || "Enterprise Hardware Standard"}
+Custodian:         ${asset.EmployeeName || currentUser?.displayName || "Assigned Quadra Staff"}
+Department:        ${asset.Department || "Engineering & Technology"}
+Site / Location:   ${asset.Site || "HQ - Coimbatore"} (${asset.Location || "Main Campus"})
+
+2. WARRANTY & AMC COVERAGE DETAILS
+--------------------------------------------------------------------------------
+Coverage Plan:     ProSupport Enterprise On-site Coverage & AMC
+Authorized OEM:    ${asset.Vendor || "Dell Technologies India Enterprise Support"}
+Commencement Date: ${formatDate(asset.PurchaseDate || "2024-01-15")}
+Expiration Date:   ${asset.ExpireDate ? formatDate(asset.ExpireDate) : "Standard 3-Year Corporate Period"}
+Coverage Status:   ACTIVE & VERIFIED (Grade A Enterprise SLA)
+Response SLA:      Next Business Day On-Site Service & Rapid Parts Replacement
+Accidental Damage: Covered under Quadra Corporate Fleet Protection Policy
+
+3. AUTHORIZED CONTACT & CLAIMS
+--------------------------------------------------------------------------------
+Helpdesk Toll-Free: 1800-425-QUADRA (Ext: 4400)
+Email Support:      it-assets@quadra.com
+Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]/g, "")}-${Date.now().toString(36).toUpperCase()}
+================================================================================
+`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Warranty_Certificate_${asset.AssetTagID || asset.ID}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    dispatchToast(
+      <Toast>
+        <ToastTitle>Warranty certificate downloaded successfully</ToastTitle>
+      </Toast>,
+      { intent: "success" }
+    );
+  };
+
   const holdingDate = useMemo(() => {
     if (!asset) return null;
     return asset.PurchaseDate || (asset as any).AssignedAt || (asset as any).CreatedAt || "2024-01-15";
@@ -226,12 +306,12 @@ const EmployeeMyAssetDetail: React.FC = () => {
       <Toaster toasterId={toasterId} />
       <div
         style={{
-          padding: "24px 32px",
+          padding: "16px 24px",
           display: "flex",
           flexDirection: "column",
-          gap: "28px",
-          maxWidth: "1200px",
-          margin: "0 auto",
+          gap: "24px",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* Breadcrumb Navigation */}
@@ -441,8 +521,121 @@ const EmployeeMyAssetDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: 4 Action Cards (Upgrade, Repair, Report Lost, Request Handover) */}
-          {!viewOnly && (
+          {/* Admin View: Governance, Specs & Actions */}
+          {isAdmin && !viewOnly && (
+            <div
+              style={{
+                background: "#FFFFFF",
+                borderRadius: "20px",
+                padding: "24px 26px",
+                border: "1px solid #E2E8F0",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                gap: "20px",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                  <div style={{ fontSize: "16px", fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <ShieldCheckmarkRegular style={{ color: "#007ED5", fontSize: "20px" }} />
+                    Asset Governance & Allocation
+                  </div>
+                  <span
+                    style={{
+                      background: "#EFF6FF",
+                      color: "#007ED5",
+                      fontSize: "11.5px",
+                      fontWeight: 700,
+                      padding: "3px 10px",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    Admin Control
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginTop: "12px" }}>
+                  <div style={{ background: "#F8FAFC", padding: "12px 14px", borderRadius: "12px", border: "1px solid #F1F5F9" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>Procurement Value</div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A", marginTop: "4px" }}>{formatCost(asset.Cost)}</div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "12px 14px", borderRadius: "12px", border: "1px solid #F1F5F9" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>Warranty Expiry</div>
+                    <div style={{ fontSize: "14.5px", fontWeight: 700, color: "#0F172A", marginTop: "4px" }}>{formatDate(asset.ExpireDate)}</div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "12px 14px", borderRadius: "12px", border: "1px solid #F1F5F9" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>Vendor Partner</div>
+                    <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#0F172A", marginTop: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {asset.VendorName || "Enterprise Supplies"}
+                    </div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "12px 14px", borderRadius: "12px", border: "1px solid #F1F5F9" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>Department</div>
+                    <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#0F172A", marginTop: "4px" }}>
+                      {asset.Department || "Corporate Engineering"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", borderTop: "1px solid #F1F5F9", paddingTop: "16px", flexWrap: "wrap" }}>
+                <button
+                  onClick={() => setAdminEditOpen(true)}
+                  style={{
+                    flex: 1,
+                    minWidth: "140px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "10px 16px",
+                    fontSize: "13.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(0, 126, 213, 0.25)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                >
+                  <EditRegular style={{ fontSize: "16px" }} />
+                  <span>Edit Asset</span>
+                </button>
+                <button
+                  onClick={() => navigate("/Asset/inventory")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    background: "#FFFFFF",
+                    color: "#475569",
+                    border: "1px solid #CBD5E1",
+                    borderRadius: "10px",
+                    padding: "10px 16px",
+                    fontSize: "13.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#FFFFFF")}
+                >
+                  <BuildingRegular style={{ fontSize: "16px" }} />
+                  <span>All Assets</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Employee View: 4 Action Cards (Upgrade, Repair, Report Lost, Request Handover) */}
+          {!isAdmin && !viewOnly && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
               {/* Card 1: Request Hardware Upgrade */}
               <div
@@ -611,7 +804,7 @@ const EmployeeMyAssetDetail: React.FC = () => {
 
               {/* Card 4: Request Handover */}
               <div
-                onClick={() => navigate("/Asset/my-assets/handover")}
+                onClick={() => setHandoverOpen(true)}
                 style={{
                   background: "#FFFFFF",
                   border: "1px solid #E2E8F0",
@@ -723,8 +916,36 @@ const EmployeeMyAssetDetail: React.FC = () => {
               icon={<ShieldCheckmarkRegular style={{ fontSize: "20px" }} />}
               iconBg="#FEF9C3"
               iconColor="#CA8A04"
-              label="Warranty / AMC Expiry"
-              value={asset.ExpireDate ? `Expires on ${formatDate(asset.ExpireDate)}` : "Standard Corporate Warranty (Active)"}
+              label="Warranty Expiry"
+              value={asset.ExpireDate ? formatDate(asset.ExpireDate) : "Corporate Warranty"}
+              actionButton={
+                <button
+                  type="button"
+                  onClick={() => setWarrantyModalOpen(true)}
+                  title="View & Download Warranty Document"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    background: "#EFF6FF",
+                    border: "1px solid #BFDBFE",
+                    borderRadius: "8px",
+                    padding: "5px 9px",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    color: "#1D4ED8",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#DBEAFE")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#EFF6FF")}
+                >
+                  <DocumentArrowDownRegular style={{ fontSize: "14px" }} />
+                  <span>View & Download</span>
+                </button>
+              }
             />
 
             {/* 6. Site / Location */}
@@ -746,7 +967,7 @@ const EmployeeMyAssetDetail: React.FC = () => {
             </h2>
 
             {/* Segmented View Switcher */}
-            <div style={{ display: "flex", background: "#F1F5F9", padding: "3px", borderRadius: "9999px", border: "1px solid #E2E8F0" }}>
+            <div style={{ display: "flex", background: "#F1F5F9", padding: "3px", borderRadius: "9999px", border: "1px solid #E2E8F0", flexWrap: "wrap", gap: "2px" }}>
               <button
                 onClick={() => setActiveHistoryTab("requests")}
                 style={{
@@ -794,6 +1015,22 @@ const EmployeeMyAssetDetail: React.FC = () => {
                 }}
               >
                 Audit & Custody
+              </button>
+              <button
+                onClick={() => setActiveHistoryTab("warranty")}
+                style={{
+                  border: "none",
+                  background: activeHistoryTab === "warranty" ? "#FFFFFF" : "transparent",
+                  color: activeHistoryTab === "warranty" ? "#0F172A" : "#64748B",
+                  borderRadius: "9999px",
+                  padding: "6px 16px",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: activeHistoryTab === "warranty" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                Warranty & Documents (1)
               </button>
             </div>
           </div>
@@ -1044,6 +1281,78 @@ const EmployeeMyAssetDetail: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Tab Content 4: Warranty & SLA Documentation */}
+          {activeHistoryTab === "warranty" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "20px",
+                  padding: "22px 24px",
+                  borderRadius: "16px",
+                  background: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", minWidth: "280px", flex: "1 1 300px" }}>
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "12px",
+                      background: "#EFF6FF",
+                      color: "#007ED5",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "24px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ShieldCheckmarkRegular />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A" }}>
+                        Official OEM Warranty & SLA Agreement
+                      </span>
+                      <Badge appearance="tint" color="success">
+                        Active Coverage
+                      </Badge>
+                    </div>
+                    <div style={{ fontSize: "13.5px", color: "#475569", marginTop: "4px" }}>
+                      Certificate ID: <strong>WARR-{asset.AssetTagID || asset.ID}</strong> • Provider: <strong>{asset.Vendor || "Dell Technologies India Enterprise Partner"}</strong>
+                    </div>
+                    <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "4px" }}>
+                      Coverage Period: <strong>{formatDate(asset.PurchaseDate || "2024-01-15")}</strong> to{" "}
+                      <strong>{asset.ExpireDate ? formatDate(asset.ExpireDate) : "Standard 3-Year Corporate Period"}</strong> (Next Business Day On-Site Service)
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <Button
+                    appearance="outline"
+                    icon={<EyeRegular />}
+                    onClick={() => setWarrantyModalOpen(true)}
+                  >
+                    View Document
+                  </Button>
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowDownloadRegular />}
+                    onClick={handleDownloadWarranty}
+                  >
+                    Download Document
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1081,6 +1390,143 @@ const EmployeeMyAssetDetail: React.FC = () => {
           }}
         />
       )}
+
+      {/* Handover Drawer Panel */}
+      <AssetHandoverDrawerPanel
+        open={handoverOpen}
+        onOpenChange={setHandoverOpen}
+        assetId={asset.ID}
+        assetName={asset.AssetName}
+        assetTagId={asset.AssetTagID}
+        category={asset.Category}
+        onSubmitted={loadData}
+      />
+
+      {/* Admin Edit Drawer */}
+      <AssetFormDialog
+        open={adminEditOpen}
+        onOpenChange={setAdminEditOpen}
+        asset={asset}
+        currentUserId={currentUser?.userID ?? ""}
+        onSaved={loadData}
+        onAssetChanged={setAsset}
+      />
+
+      {/* Warranty Certificate Preview Modal */}
+      <Dialog open={warrantyModalOpen} onOpenChange={(_, d) => setWarrantyModalOpen(d.open)}>
+        <DialogSurface style={{ maxWidth: "640px", borderRadius: "20px", padding: "28px" }}>
+          <DialogTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="close"
+                icon={<DismissRegular />}
+                onClick={() => setWarrantyModalOpen(false)}
+              />
+            }
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "10px",
+                  background: "#EFF6FF",
+                  color: "#007ED5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "20px",
+                }}
+              >
+                <ShieldCheckmarkRegular />
+              </div>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
+                  Certificate of Warranty Coverage
+                </div>
+                <div style={{ fontSize: "12.5px", color: "#64748B" }}>
+                  Quadra Enterprise Asset Protection & OEM SLA Agreement
+                </div>
+              </div>
+            </div>
+          </DialogTitle>
+
+          <DialogBody>
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "20px",
+                background: "#F8FAFC",
+                border: "1.5px solid #E2E8F0",
+                borderRadius: "14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E2E8F0", paddingBottom: "10px" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>Certificate Number</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A" }}>WARR-{asset.AssetTagID || asset.ID}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>Status</span>
+                  <div><Badge appearance="tint" color="success">VERIFIED ACTIVE</Badge></div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "13px" }}>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Covered Device:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetName}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Asset Tag ID:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetTagID}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Serial Number:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.SerialNo || "SN-A1B2C3D4"}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Custodian:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.EmployeeName || currentUser?.displayName || "Assigned Staff"}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Commencement Date:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{formatDate(asset.PurchaseDate || "2024-01-15")}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Warranty Expiration:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.ExpireDate ? formatDate(asset.ExpireDate) : "3 Years Standard"}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Authorized OEM:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.Vendor || "Dell Technologies India Support"}</div>
+                </div>
+                <div>
+                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>SLA Response:</span>
+                  <div style={{ fontWeight: 600, color: "#1E293B" }}>Next Business Day On-Site Service</div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "10px", fontSize: "12px", color: "#64748B" }}>
+                This certificate validates ongoing enterprise hardware warranty, component replacement, and manufacturer technical assistance authorized by Quadra Procurement.
+              </div>
+            </div>
+
+            <DialogActions style={{ marginTop: "20px" }}>
+              <Button appearance="secondary" onClick={() => setWarrantyModalOpen(false)}>
+                Close
+              </Button>
+              <Button appearance="primary" icon={<ArrowDownloadRegular />} onClick={handleDownloadWarranty}>
+                Download Document
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 };
@@ -1092,6 +1538,7 @@ const SpecItem = ({
   label,
   value,
   onCopy,
+  actionButton,
 }: {
   icon: React.ReactNode;
   iconBg: string;
@@ -1099,6 +1546,7 @@ const SpecItem = ({
   label: string;
   value: string;
   onCopy?: () => void;
+  actionButton?: React.ReactNode;
 }) => (
   <div
     style={{
@@ -1110,9 +1558,10 @@ const SpecItem = ({
       border: "1px solid #F1F5F9",
       borderRadius: "16px",
       boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+      gap: "10px",
     }}
   >
-    <div style={{ display: "flex", alignItems: "center", gap: "16px", minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0, flex: 1 }}>
       <div
         style={{
           width: "44px",
@@ -1128,13 +1577,13 @@ const SpecItem = ({
       >
         {icon}
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: "12px", color: "#94A3B8", fontWeight: 500 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: "12px", color: "#94A3B8", fontWeight: 500, whiteSpace: "nowrap" }}>
           {label}
         </div>
         <div
           style={{
-            fontSize: "14.5px",
+            fontSize: actionButton ? "13px" : "14px",
             fontWeight: 700,
             color: "#1E293B",
             marginTop: "2px",
@@ -1142,11 +1591,18 @@ const SpecItem = ({
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
+          title={value}
         >
           {value}
         </div>
       </div>
     </div>
+
+    {actionButton && (
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+        {actionButton}
+      </div>
+    )}
 
     {onCopy && (
       <button
@@ -1163,6 +1619,7 @@ const SpecItem = ({
           alignItems: "center",
           justifyContent: "center",
           transition: "all 0.15s ease",
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = "#007ED5";

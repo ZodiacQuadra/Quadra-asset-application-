@@ -24,3 +24,12 @@ Thumbs.db
 *.sqlite-shm
 *.sqlite-wal
 *.sqlite-journal
+
+# Test and verification artifacts
+backend/*.png
+backend/verify_*.js
+backend/inspect_*.js
+backend/screenshot_*.js
+backend/capture_*.js
+backend/check_*.js
+

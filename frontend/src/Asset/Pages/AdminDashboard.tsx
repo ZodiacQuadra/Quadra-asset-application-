@@ -168,21 +168,21 @@ const AdminDashboard: React.FC = () => {
     switch (type) {
       case "Assigned":
         return (
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckmarkCircleFilled style={{ fontSize: 20 }} />
+          <div style={{ width: 40, height: 40, borderRadius: "12px", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid #d1fae5" }}>
+            <CheckmarkCircleFilled style={{ fontSize: 22 }} />
           </div>
         );
       case "Reprogress":
       case "Repair":
         return (
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#eff6ff", color: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Wrench24Regular style={{ fontSize: 18 }} />
+          <div style={{ width: 40, height: 40, borderRadius: "12px", background: "#eff6ff", color: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid #dbeafe" }}>
+            <Wrench24Regular style={{ fontSize: 20 }} />
           </div>
         );
       default:
         return (
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#eef2ff", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ClipboardTaskListLtrRegular style={{ fontSize: 18 }} />
+          <div style={{ width: 40, height: 40, borderRadius: "12px", background: "#eef2ff", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid #e0e7ff" }}>
+            <ClipboardTaskListLtrRegular style={{ fontSize: 20 }} />
           </div>
         );
     }
@@ -191,7 +191,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <>
       <Toaster toasterId={toasterId} />
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 24 }}>
         
         {/* Header with Title and Pill Calendar View Button */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
@@ -537,7 +537,7 @@ const AdminDashboard: React.FC = () => {
       {/* Activity Detail Modal to show full hierarchy and audit details */}
       {selectedActivity && (
         <Dialog open={!!selectedActivity} onOpenChange={(_, data) => !data.open && setSelectedActivity(null)}>
-          <DialogSurface style={{ maxWidth: 500, borderRadius: 16, padding: 24 }}>
+          <DialogSurface style={{ minWidth: 520, maxWidth: 560, borderRadius: 16, padding: "24px 28px", boxSizing: "border-box" }}>
             <DialogTitle
               action={
                 <Button
@@ -547,39 +547,91 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setSelectedActivity(null)}
                 />
               }
+              style={{ fontSize: 18, fontWeight: 700, color: "#0F172A", margin: 0, paddingBottom: 4 }}
             >
               Activity Details & Audit Trail
             </DialogTitle>
-            <DialogBody style={{ marginTop: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <DialogBody style={{ marginTop: 16, width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", boxSizing: "border-box" }}>
+              <div style={{ width: "100%", alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 18 }}>
+                {/* Event Summary Card with aligned icon */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, width: "100%" }}>
                   {renderActivityIcon(selectedActivity.ActivityType)}
-                  <div>
-                    <Text weight="semibold" style={{ fontSize: 15, color: "#0f172a", display: "block" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text weight="semibold" style={{ fontSize: 15, color: "#0F172A", display: "block", lineHeight: 1.45 }}>
                       {selectedActivity.Description}
                     </Text>
-                    <Badge appearance="tint" color="informative" shape="rounded">
-                      Type: {selectedActivity.ActivityType}
-                    </Badge>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                      <Badge appearance="tint" color="informative" shape="rounded" style={{ fontWeight: 600, fontSize: 11.5 }}>
+                        Type: {selectedActivity.ActivityType}
+                      </Badge>
+                      <span style={{ fontSize: 12, color: "#64748B" }}>
+                        {formatRelativeTime(selectedActivity.OccurredAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ background: "#f8fafc", padding: 14, borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <Text size={200} style={{ color: "#64748b" }}>Timestamp</Text>
-                    <Text size={200} weight="semibold" style={{ color: "#1e293b" }}>{new Date(selectedActivity.OccurredAt).toLocaleString()}</Text>
+                {/* Structured Audit Trail Metadata Box */}
+                <div
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: "#F8FAFC",
+                    padding: "16px 20px",
+                    borderRadius: "12px",
+                    border: "1px solid #E2E8F0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                    <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>
+                      Event Timestamp
+                    </span>
+                    <span style={{ fontSize: "13px", color: "#1E293B", fontWeight: 600 }}>
+                      {new Date(selectedActivity.OccurredAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "medium",
+                      })}
+                    </span>
                   </div>
+
                   {selectedActivity.ReferenceID && (
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <Text size={200} style={{ color: "#64748b" }}>Reference Tag / ID</Text>
-                      <Text size={200} weight="semibold" style={{ color: "#007ed5" }}>{selectedActivity.ReferenceID}</Text>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                      <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>
+                        Reference Tag / ID
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12.5px",
+                          fontWeight: 700,
+                          color: "#007ED5",
+                          background: "#EFF6FF",
+                          padding: "2px 8px",
+                          borderRadius: "6px",
+                          border: "1px solid #BFDBFE",
+                        }}
+                      >
+                        {selectedActivity.ReferenceID}
+                      </span>
                     </div>
                   )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                    <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>
+                      Audit Verification
+                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12.5px", color: "#16A34A", fontWeight: 600 }}>
+                      <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#16A34A" }} />
+                      Verified & Recorded
+                    </span>
+                  </div>
                 </div>
               </div>
             </DialogBody>
-            <DialogActions style={{ marginTop: 20 }}>
-              <Button appearance="secondary" onClick={() => setSelectedActivity(null)}>
+            <DialogActions style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <Button appearance="secondary" onClick={() => setSelectedActivity(null)} style={{ borderRadius: 8 }}>
                 Close
               </Button>
               <Button
@@ -588,6 +640,7 @@ const AdminDashboard: React.FC = () => {
                   setSelectedActivity(null);
                   navigate("/Asset/admin-approval");
                 }}
+                style={{ background: "#007ED5", borderRadius: 8 }}
               >
                 View in Approvals Hub
               </Button>

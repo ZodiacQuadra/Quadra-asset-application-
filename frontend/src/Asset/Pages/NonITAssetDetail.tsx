@@ -123,7 +123,7 @@ const NonITAssetDetail = () => {
       <div style={{ padding: "16px" }}>
         <Text style={{ color: "var(--colorPaletteRedForeground1)" }}>{error || "Asset not found."}</Text>
         <div style={{ marginTop: "12px" }}>
-          <Button appearance="secondary" icon={<ArrowLeftRegular />} onClick={() => navigate("/Asset/non-it-assets")}>
+          <Button appearance="secondary" icon={<ArrowLeftRegular />} onClick={() => navigate("/Asset/inventory?type=non-it")}>
             Back to Non-IT Assets
           </Button>
         </div>
@@ -134,7 +134,7 @@ const NonITAssetDetail = () => {
   return (
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-        <Button appearance="transparent" icon={<ArrowLeftRegular />} onClick={() => navigate("/Asset/non-it-assets")}>
+        <Button appearance="transparent" icon={<ArrowLeftRegular />} onClick={() => navigate("/Asset/inventory?type=non-it")}>
           Back to Non-IT Assets
         </Button>
         <Button appearance="primary" shape="circular" icon={<EditRegular />} onClick={() => setFormOpen(true)}>

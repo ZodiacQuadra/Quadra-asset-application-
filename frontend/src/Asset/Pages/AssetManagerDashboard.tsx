@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Card,
   Button,
+  Input,
   Text,
   Badge,
   Spinner,
@@ -13,6 +14,11 @@ import {
   Toaster,
   useToastController,
   useId,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from "@fluentui/react-components";
 import {
   AddRegular,
@@ -190,16 +196,30 @@ const AssetManagerDashboard: React.FC = () => {
       if (teamDepartment !== "All" && m.Department !== teamDepartment) return false;
       if (teamSearch.trim()) {
         const q = teamSearch.trim().toLowerCase();
-        const match =
+        const memberMatch =
           (m.DisplayName || "").toLowerCase().includes(q) ||
           (m.JobTitle || "").toLowerCase().includes(q) ||
           (m.Department || "").toLowerCase().includes(q) ||
           (m.Mail || "").toLowerCase().includes(q);
-        if (!match) return false;
+        if (memberMatch) return true;
+
+        // Also check if any loaded or assigned asset under this member matches query
+        const memberAssets = assetsByMember[m.ID] || [];
+        const assetMatch = memberAssets.some(
+          (a) =>
+            (a.AssetName || "").toLowerCase().includes(q) ||
+            (a.AssetTagID || "").toLowerCase().includes(q) ||
+            (a.SerialNo || "").toLowerCase().includes(q) ||
+            (a.Category || "").toLowerCase().includes(q) ||
+            (a.Model || "").toLowerCase().includes(q)
+        );
+        if (assetMatch) return true;
+
+        return false;
       }
       return true;
     });
-  }, [teamMembers, teamDepartment, teamSearch]);
+  }, [teamMembers, teamDepartment, teamSearch, assetsByMember]);
 
   const totalTeamPages = Math.max(1, Math.ceil(filteredTeamMembers.length / PAGE_SIZE));
   const pagedTeamMembers = useMemo(
@@ -254,71 +274,72 @@ const AssetManagerDashboard: React.FC = () => {
     <>
       <Toaster toasterId={toasterId} />
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-          <Text size={600} weight="semibold">
-            Asset Manager Dashboard
-          </Text>
-          {tab === "my-assets" && (
-            <button
-              type="button"
-              onClick={() => navigate("/Asset/new-request")}
+        {/* Stable header row: title + toggle + action button all in one row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", minHeight: "44px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+            <Text size={600} weight="semibold">
+              Asset Manager Dashboard
+            </Text>
+            <QuadraPillToggle<DashboardTab>
+              options={[
+                { key: "my-assets", label: "My Assets" },
+                { key: "team-assets", label: "Team Assets" },
+              ]}
+              value={tab}
+              onChange={(val) => setTab(val)}
+            />
+          </div>
+          {/* Keep button in DOM always (visibility:hidden when not needed) to prevent layout shift */}
+          <button
+            type="button"
+            onClick={() => navigate("/Asset/new-request")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              background: "#FFFFFF",
+              border: "1px solid #E2E8F0",
+              borderRadius: "9999px",
+              padding: "6px 20px 6px 6px",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              cursor: "pointer",
+              transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+              visibility: tab === "my-assets" ? "visible" : "hidden",
+              pointerEvents: tab === "my-assets" ? "auto" : "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 126, 213, 0.16)";
+              e.currentTarget.style.borderColor = "#93C5FD";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.04)";
+              e.currentTarget.style.borderColor = "#E2E8F0";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div
               style={{
-                display: "inline-flex",
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                background: "#007ED5",
+                color: "#FFFFFF",
+                display: "flex",
                 alignItems: "center",
-                gap: "10px",
-                background: "#FFFFFF",
-                border: "1px solid #E2E8F0",
-                borderRadius: "9999px",
-                padding: "6px 20px 6px 6px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-                cursor: "pointer",
-                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 126, 213, 0.16)";
-                e.currentTarget.style.borderColor = "#93C5FD";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.04)";
-                e.currentTarget.style.borderColor = "#E2E8F0";
-                e.currentTarget.style.transform = "translateY(0)";
+                justifyContent: "center",
+                fontSize: "18px",
+                fontWeight: 600,
+                lineHeight: 1,
+                boxShadow: "0 2px 6px rgba(0, 126, 213, 0.3)",
               }}
             >
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  background: "#007ED5",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "18px",
-                  fontWeight: 600,
-                  lineHeight: 1,
-                  boxShadow: "0 2px 6px rgba(0, 126, 213, 0.3)",
-                }}
-              >
-                +
-              </div>
-              <span style={{ fontSize: "14px", fontWeight: 600, color: "#334155", letterSpacing: "-0.01em" }}>
-                New Asset Request
-              </span>
-            </button>
-          )}
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap" }}>
-          <QuadraPillToggle<DashboardTab>
-            options={[
-              { key: "my-assets", label: "My Assets" },
-              { key: "team-assets", label: "Team Assets" },
-            ]}
-            value={tab}
-            onChange={(val) => setTab(val)}
-          />
+              +
+            </div>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "#334155", letterSpacing: "-0.01em" }}>
+              New Asset Request
+            </span>
+          </button>
         </div>
 
         {tab === "my-assets" &&
@@ -362,42 +383,39 @@ const AssetManagerDashboard: React.FC = () => {
                 }}
               >
                 {/* Search input */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    background: "#F8FAFC",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: "9999px",
-                    padding: "6px 14px",
-                    minWidth: "260px",
-                    flex: "1 1 260px",
-                    maxWidth: "400px",
-                  }}
-                >
-                  <SearchRegular style={{ color: "#94A3B8", fontSize: "16px", flexShrink: 0 }} />
-                  <input
-                    type="text"
-                    placeholder="Search team member by name, role, email..."
+                <div style={{ position: "relative", minWidth: "280px", maxWidth: "420px", flex: "1 1 280px" }}>
+                  <Input
+                    contentBefore={<SearchRegular style={{ color: "#94A3B8" }} />}
+                    placeholder="Search team member by name, role, or asset..."
                     value={teamSearch}
-                    onChange={(e) => {
-                      setTeamSearch(e.target.value);
+                    onChange={(_, d) => {
+                      setTeamSearch(d.value);
                       setTeamPage(1);
                     }}
                     style={{
-                      border: "none",
-                      outline: "none",
                       width: "100%",
-                      fontSize: "13px",
-                      color: "#1E293B",
-                      background: "transparent",
+                      borderRadius: "9999px",
+                      height: "38px",
+                      background: "#F8FAFC",
+                      border: "1px solid #E2E8F0",
                     }}
                   />
                   {teamSearch && (
                     <button
                       onClick={() => setTeamSearch("")}
-                      style={{ border: "none", background: "transparent", color: "#94A3B8", cursor: "pointer", padding: 0 }}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "transparent",
+                        color: "#94A3B8",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: 0,
+                      }}
                     >
                       <DismissRegular style={{ fontSize: "14px" }} />
                     </button>
@@ -405,33 +423,65 @@ const AssetManagerDashboard: React.FC = () => {
                 </div>
 
                 {/* Department filter dropdown */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "12.5px", color: "#64748B", fontWeight: 600 }}>Department:</span>
-                  <select
-                    value={teamDepartment}
-                    onChange={(e) => {
-                      setTeamDepartment(e.target.value);
-                      setTeamPage(1);
-                    }}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "9999px",
-                      border: "1px solid #CBD5E1",
-                      background: "#FFFFFF",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      color: "#1E293B",
-                      outline: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {teamDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept === "All" ? "All Departments" : dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <button
+                      type="button"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "6px 16px",
+                        borderRadius: "9999px",
+                        border: "1px solid #CBD5E1",
+                        background: "#FFFFFF",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: "#1E293B",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#007ED5";
+                        e.currentTarget.style.background = "#F8FAFC";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#CBD5E1";
+                        e.currentTarget.style.background = "#FFFFFF";
+                      }}
+                    >
+                      <FilterRegular style={{ color: "#007ED5", fontSize: "14px" }} />
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
+                        Department:
+                      </span>
+                      <span style={{ color: "#0F172A" }}>
+                        {teamDepartment === "All" ? "All Departments" : teamDepartment}
+                      </span>
+                      <ChevronDownRegular style={{ fontSize: "12px", color: "#64748B", marginLeft: "2px" }} />
+                    </button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList style={{ minWidth: "180px", borderRadius: "12px", padding: "6px" }}>
+                      {teamDepartments.map((dept) => (
+                        <MenuItem
+                          key={dept}
+                          onClick={() => {
+                            setTeamDepartment(dept);
+                            setTeamPage(1);
+                          }}
+                          style={{
+                            borderRadius: "8px",
+                            fontWeight: teamDepartment === dept ? 700 : 500,
+                            color: teamDepartment === dept ? "#007ED5" : "#1E293B",
+                          }}
+                        >
+                          {dept === "All" ? "All Departments" : dept}
+                        </MenuItem>
+                      ))}
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
               </div>
 
               {filteredTeamMembers.length === 0 ? (
@@ -483,31 +533,12 @@ const AssetManagerDashboard: React.FC = () => {
                           ) : memberAssets.length === 0 ? (
                             <Text style={{ color: "#605E5C" }}>No assets currently assigned to this employee.</Text>
                           ) : (
-                            <>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                                <Text size={200} style={{ color: "#605E5C" }}>
-                                  Select an asset to report it lost.
-                                </Text>
-                                <Button
-                                  appearance="outline"
-                                  size="small"
-                                  icon={<WarningRegular />}
-                                  disabled={selectedAssetIds.size === 0}
-                                  onClick={() => setReportLostOpen(true)}
-                                >
-                                  Report Lost{selectedAssetIds.size > 0 ? ` (${selectedAssetIds.size})` : ""}
-                                </Button>
-                              </div>
-                              <AssetCardGrid
-                                assets={memberAssets}
-                                cardHeight="110px"
-                                onSelect={(asset) => navigate(`/Asset/my-assets/${asset.AssetID}?viewOnly=1`)}
-                                selectable
-                                selectedIds={selectedAssetIds}
-                                onToggleSelect={toggleAssetSelect}
-                                pendingLostAssetIds={pendingLostByMember[member.ID]}
-                              />
-                            </>
+                            <AssetCardGrid
+                              assets={memberAssets}
+                              cardHeight="110px"
+                              onSelect={(asset) => navigate(`/Asset/my-assets/${asset.AssetID}?viewOnly=1`)}
+                              pendingLostAssetIds={pendingLostByMember[member.ID]}
+                            />
                           )}
                         </div>
                       )}

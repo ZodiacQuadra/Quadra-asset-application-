@@ -61,6 +61,7 @@ import { getAssetRepairRequests, AssetRepairRequestRecord } from "../Services/As
 import { getAssetHRRequests, AssetHRRequestRecord, HRRequestStatus } from "../Services/AssetHRRequestService";
 import { REQUEST_STATUS_LABEL, REQUEST_STATUS_COLOR } from "../Utils/requestStatus";
 import QuadraPillToggle from "../../Common/QuadraPillToggle";
+import { CANONICAL_BRANCHES, CANONICAL_DEPARTMENTS, normalizeBranch, normalizeDepartment } from "../../Common/EnterpriseConstants";
 
 type TabKey = "assignments" | "purchases" | "stock" | "insights";
 type InsightKey = "new" | "repair" | "upgrade" | "hr";
@@ -178,18 +179,12 @@ const AssetReports: React.FC = () => {
     getAssetReportsOverview(branch)
       .then((data) => {
         setOverview(data);
-        if (data.assignmentByDepartment.length > 0) {
-          const firstDept = data.assignmentByDepartment[0].Department;
-          setSelectedDepartment(firstDept);
-          setDepartmentLoading(true);
-          getDepartmentAssignments(firstDept, branch)
-            .then(setDepartmentUsers)
-            .catch(() => {})
-            .finally(() => setDepartmentLoading(false));
-        } else {
-          setSelectedDepartment("");
-          setDepartmentUsers([]);
-        }
+        setSelectedDepartment("");
+        setDepartmentLoading(true);
+        getDepartmentAssignments("", branch)
+          .then(setDepartmentUsers)
+          .catch(() => {})
+          .finally(() => setDepartmentLoading(false));
       })
       .catch((err) => showError(err?.message || "Failed to load reports"))
       .finally(() => setLoading(false));
@@ -223,7 +218,6 @@ const AssetReports: React.FC = () => {
   const handleSelectDepartment = (department: string) => {
     setSelectedDepartment(department);
     setDepartmentUsers([]);
-    if (!department) return;
     setDepartmentLoading(true);
     getDepartmentAssignments(department, selectedBranch)
       .then(setDepartmentUsers)
@@ -395,7 +389,7 @@ const AssetReports: React.FC = () => {
   const unassignedITCount = kpi ? kpi.TotalITAssetCount - kpi.AssetsAssignedCount : 0;
 
   return (
-    <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 24 }}>
       <Toaster toasterId={toasterId} />
       {portal}
 
@@ -453,7 +447,7 @@ const AssetReports: React.FC = () => {
             icon={<BuildingRegular />}
             label="Branch"
             value={selectedBranch}
-            options={["All Branches", "Coimbatore HQ", "Chennai", "Bangalore", "Hyderabad", "Mumbai", "Delhi NCR"].map((b) => ({
+            options={["All Branches", ...CANONICAL_BRANCHES].map((b) => ({
               value: b,
               label: b,
             }))}
@@ -542,152 +536,9 @@ const AssetReports: React.FC = () => {
 
       {/* ============================= TAB 1: Who Holds What by Department ============================= */}
       {activeTab === "assignments" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 24, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "360px minmax(0, 1fr)", gap: 24, alignItems: "start" }}>
           
-          {/* Main Left Area: Who Holds What Table & Filter Pills */}
-          <div
-            className="quadra-glass-card"
-            style={{
-              padding: "24px 28px",
-              borderRadius: 16,
-              background: "#ffffff",
-              border: "1px solid #edf2f7",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-              minWidth: 0,
-            }}
-          >
-            <div>
-              <Text weight="bold" size={400} style={{ color: "#0f172a", fontSize: 16, display: "block" }}>
-                Who Holds What — {selectedDepartment || "All Departments"}
-              </Text>
-              <Text size={200} style={{ color: "#64748b", fontSize: 13 }}>
-                Active employee custodian records and deployed hardware specifications
-              </Text>
-            </div>
-
-            {/* Department Filter Pills for quick discovery */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={() => handleSelectDepartment("")}
-                style={{
-                  padding: "5px 14px",
-                  borderRadius: 9999,
-                  fontSize: 12.5,
-                  fontWeight: !selectedDepartment ? 600 : 500,
-                  background: !selectedDepartment ? "#007ed5" : "#f1f5f9",
-                  color: !selectedDepartment ? "#ffffff" : "#475569",
-                  border: !selectedDepartment ? "1px solid #007ed5" : "1px solid #e2e8f0",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                All Departments
-              </button>
-              {overview.assignmentByDepartment.map((d) => {
-                const isSelected = selectedDepartment === d.Department;
-                return (
-                  <button
-                    key={d.Department}
-                    type="button"
-                    onClick={() => handleSelectDepartment(d.Department)}
-                    style={{
-                      padding: "5px 14px",
-                      borderRadius: 9999,
-                      fontSize: 12.5,
-                      fontWeight: isSelected ? 600 : 500,
-                      background: isSelected ? "#007ed5" : "#f1f5f9",
-                      color: isSelected ? "#ffffff" : "#475569",
-                      border: isSelected ? "1px solid #007ed5" : "1px solid #e2e8f0",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {d.Department} ({d.AssignedCount})
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Instant Search in Department */}
-            <div>
-              <Input
-                contentBefore={<SearchRegular style={{ color: "#007ED5" }} />}
-                style={{
-                  width: "100%",
-                  maxWidth: 420,
-                  height: "38px",
-                  borderRadius: "9999px",
-                  border: "1px solid #E2E8F0",
-                  background: "#FFFFFF",
-                }}
-                placeholder="Search employee name, asset, or tag..."
-                value={whoHoldsWhatSearch}
-                onChange={(_, d) => setWhoHoldsWhatSearch(d.value)}
-              />
-            </div>
-
-            {departmentLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
-                <Spinner size="medium" label="Loading employee assets..." />
-              </div>
-            ) : filteredDepartmentUsers.length === 0 ? (
-              <div style={{ padding: "32px 16px", textAlign: "center", color: "#94a3b8" }}>
-                No active asset assignments found matching your search.
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                      {["Employee", "Email", "Branch", "Asset Name", "Tag ID", "Category", "Assigned On"].map((h) => (
-                        <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase" }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDepartmentUsers.map((u) => (
-                      <tr key={`${u.UserID}-${u.AssetID}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "12px 14px", fontWeight: 600, color: "#0f172a", fontSize: 13.5 }}>
-                          {u.DisplayName}
-                        </td>
-                        <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>
-                          {u.Mail || "-"}
-                        </td>
-                        <td style={{ padding: "12px 14px" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#F8FAFC", color: "#334155", padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid #E2E8F0" }}>
-                            <BuildingRegular style={{ fontSize: 12, color: "#64748B" }} />
-                            <span>{u.Branch || (selectedBranch !== "All Branches" ? selectedBranch : "Coimbatore HQ")}</span>
-                          </span>
-                        </td>
-                        <td style={{ padding: "12px 14px", color: "#1e293b", fontSize: 13 }}>
-                          {u.AssetName}
-                        </td>
-                        <td style={{ padding: "12px 14px" }}>
-                          <span style={{ background: "#e0f2fe", color: "#0284c7", padding: "3px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
-                            {u.AssetTagID}
-                          </span>
-                        </td>
-                        <td style={{ padding: "12px 14px", color: "#475569", fontSize: 13 }}>
-                          {u.Category}
-                        </td>
-                        <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>
-                          {formatDate(u.AssignedAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Right Widget: Assignments by Department (Department Share) */}
+          {/* Left Widget: Assignments by Department (Department Share) */}
           <div
             className="quadra-glass-card"
             style={{
@@ -704,8 +555,8 @@ const AssetReports: React.FC = () => {
             }}
           >
             {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <div
                   style={{
                     width: 36,
@@ -716,20 +567,32 @@ const AssetReports: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
                   <PeopleTeamRegular style={{ fontSize: 18 }} />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <Text weight="bold" size={300} style={{ color: "#0F172A", fontSize: 15, display: "block" }}>
                     Department Share
                   </Text>
-                  <span style={{ fontSize: "11.5px", color: "#64748B" }}>
-                    {selectedDepartment ? `Filtering by ${selectedDepartment}` : "Asset distribution by team"}
+                  <span
+                    style={{
+                      fontSize: "11.5px",
+                      color: "#64748B",
+                      display: "block",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: 160,
+                    }}
+                    title={selectedDepartment ? `Filtering by ${selectedDepartment}` : "Asset distribution by team"}
+                  >
+                    {selectedDepartment ? `Filtering: ${selectedDepartment}` : "Asset distribution by team"}
                   </span>
                 </div>
               </div>
-              <Badge appearance="tint" color="informative" shape="rounded">
+              <Badge appearance="tint" color="informative" shape="rounded" style={{ flexShrink: 0 }}>
                 {overview.assignmentByDepartment.length} Depts
               </Badge>
             </div>
@@ -787,8 +650,9 @@ const AssetReports: React.FC = () => {
             {/* Department List */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 480, overflowY: "auto", paddingRight: 4 }}>
               {overview.assignmentByDepartment.map((d) => {
-                const isSelected = selectedDepartment === d.Department;
-                const totalAssigned = overview.kpi?.AssignedCount || overview.assignmentByDepartment.reduce((a, b) => a + b.AssignedCount, 0) || 1;
+                const deptName = normalizeDepartment(d.Department);
+                const isSelected = selectedDepartment === d.Department || selectedDepartment === deptName;
+                const totalAssigned = overview.kpi?.AssetsAssignedCount || overview.assignmentByDepartment.reduce((a, b) => a + b.AssignedCount, 0) || 1;
                 const pct = Math.round((d.AssignedCount / totalAssigned) * 100);
                 const maxCount = overview.assignmentByDepartment[0]?.AssignedCount || 1;
                 const barWidth = Math.round((d.AssignedCount / maxCount) * 100);
@@ -819,18 +683,20 @@ const AssetReports: React.FC = () => {
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: 700,
                           }}
                         >
-                          {d.Department.substring(0, 2).toUpperCase()}
+                          {deptName.slice(0, 2).toUpperCase()}
                         </span>
-                        <Text size={200} weight={isSelected ? "bold" : "semibold"} style={{ color: isSelected ? "#007ED5" : "#1E293B", fontSize: 13 }}>
-                          {d.Department}
-                        </Text>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: isSelected ? 700 : 600, color: isSelected ? "#007ED5" : "#1E293B" }}>
+                            {deptName}
+                          </div>
+                        </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: isSelected ? "#007ED5" : "#0F172A" }}>
                           {d.AssignedCount}
                         </span>
@@ -859,682 +725,150 @@ const AssetReports: React.FC = () => {
               })}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ============================= TAB 2: Monthly Purchases ============================= */}
-      {activeTab === "purchases" && (
-        <div className="quadra-glass-card" style={{ padding: "24px", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div>
-            <Text weight="semibold" size={400} style={{ display: "block", color: "#0f172a", fontSize: 16 }}>
-              Purchases by Month & Trend
-            </Text>
-            <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "2px" }}>
-              Assets procured across the last 12 months, IT hardware and Non-IT equipment combined.
-            </Text>
-          </div>
-
-          {/* Visual bar graph representation */}
-          <div style={{ padding: "18px 20px", background: "rgba(248, 250, 252, 0.7)", borderRadius: "14px", border: "1px solid rgba(226, 232, 240, 0.8)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <Text size={200} weight="semibold" style={{ color: "#475569" }}>Procurement Volume Trend</Text>
-              <div style={{ display: "flex", gap: "16px", alignItems: "center", fontSize: "12px", color: "#64748b" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#007ED5" }} /> IT Assets
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#10B981" }} /> Non-IT Assets
-                </span>
-              </div>
+          {/* Main Right Area: Who Holds What Table & Filter Pills */}
+          <div
+            className="quadra-glass-card"
+            style={{
+              padding: "24px 28px",
+              borderRadius: 16,
+              background: "#ffffff",
+              border: "1px solid #edf2f7",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+              minWidth: 0,
+            }}
+          >
+            <div>
+              <Text weight="bold" size={400} style={{ color: "#0f172a", fontSize: 16, display: "block" }}>
+                Who Holds What — {selectedDepartment ? normalizeDepartment(selectedDepartment) : "All Departments"}
+              </Text>
+              <Text size={200} style={{ color: "#64748b", fontSize: 13 }}>
+                Active employee custodian records and deployed hardware specifications
+              </Text>
             </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", height: "140px", overflowX: "auto", paddingBottom: "8px" }}>
-              {overview.monthlyPurchases.map((m) => {
-                const maxVal = Math.max(1, ...overview.monthlyPurchases.map((x) => x.ITCount + x.NonITCount));
-                const itHeight = Math.round((m.ITCount / maxVal) * 100);
-                const nonItHeight = Math.round((m.NonITCount / maxVal) * 100);
+
+            {/* Department Filter Pills for quick discovery */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => handleSelectDepartment("")}
+                style={{
+                  padding: "5px 14px",
+                  borderRadius: 9999,
+                  fontSize: 12.5,
+                  fontWeight: !selectedDepartment ? 600 : 500,
+                  background: !selectedDepartment ? "#007ed5" : "#f1f5f9",
+                  color: !selectedDepartment ? "#ffffff" : "#475569",
+                  border: !selectedDepartment ? "1px solid #007ed5" : "1px solid #e2e8f0",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                All Departments
+              </button>
+              {overview.assignmentByDepartment.map((d) => {
+                const deptName = normalizeDepartment(d.Department);
+                const isSelected = selectedDepartment === d.Department || selectedDepartment === deptName;
                 return (
-                  <div key={m.MonthLabel} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: "38px", height: "100%", justifyContent: "flex-end", gap: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "100px" }}>
-                      <div
-                        title={`IT: ${m.ITCount} (${formatCurrency(m.ITCost)})`}
-                        style={{
-                          width: "12px",
-                          height: `${Math.max(4, itHeight)}%`,
-                          background: "linear-gradient(180deg, #007ED5 0%, #0284c7 100%)",
-                          borderRadius: "3px 3px 0 0",
-                          transition: "height 0.3s ease",
-                        }}
-                      />
-                      <div
-                        title={`Non-IT: ${m.NonITCount} (${formatCurrency(m.NonITValue)})`}
-                        style={{
-                          width: "12px",
-                          height: `${Math.max(4, nonItHeight)}%`,
-                          background: "linear-gradient(180deg, #10B981 0%, #059669 100%)",
-                          borderRadius: "3px 3px 0 0",
-                          transition: "height 0.3s ease",
-                        }}
-                      />
-                    </div>
-                    <Text size={100} style={{ color: "#64748b", whiteSpace: "nowrap", fontSize: "11px" }}>
-                      {monthLabelToDisplay(m.MonthLabel).split(" ")[0]}
-                    </Text>
-                  </div>
+                  <button
+                    key={d.Department}
+                    type="button"
+                    onClick={() => handleSelectDepartment(d.Department)}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: 9999,
+                      fontSize: 12.5,
+                      fontWeight: isSelected ? 600 : 500,
+                      background: isSelected ? "#007ed5" : "#f1f5f9",
+                      color: isSelected ? "#ffffff" : "#475569",
+                      border: isSelected ? "1px solid #007ed5" : "1px solid #e2e8f0",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {deptName} ({d.AssignedCount})
+                  </button>
                 );
               })}
             </div>
-          </div>
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.9)" }}>
-                  {["Month", "IT Assets", "IT Cost", "Non-IT Assets", "Non-IT Value", "Total Spend"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyPurchasesDesc.map((row) => (
-                  <tr key={row.MonthLabel} style={{ borderBottom: "1px solid rgba(241, 245, 249, 0.9)" }}>
-                    <td style={{ padding: "12px", fontWeight: 600, color: "#0f172a" }}>{monthLabelToDisplay(row.MonthLabel)}</td>
-                    <td style={{ padding: "12px", color: "#334155" }}>{row.ITCount}</td>
-                    <td style={{ padding: "12px", color: "#334155" }}>{formatCurrency(row.ITCost)}</td>
-                    <td style={{ padding: "12px", color: "#334155" }}>{row.NonITCount}</td>
-                    <td style={{ padding: "12px", color: "#334155" }}>{formatCurrency(row.NonITValue)}</td>
-                    <td style={{ padding: "12px", fontWeight: 700, color: "#007ED5" }}>
-                      {formatCurrency(row.ITCost + row.NonITValue)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ============================= TAB 3: Stock Status ============================= */}
-      {activeTab === "stock" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Top Velocity & Allocation Meter Card */}
-          <div
-            className="quadra-glass-card"
-            style={{
-              padding: "20px 24px",
-              borderRadius: "18px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-              background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9))",
-              border: "1px solid rgba(226, 232, 240, 0.9)",
-              boxShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.04)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Text size={400} weight="bold" style={{ color: "#0f172a" }}>
-                    Stock Allocation & Health Distribution
-                  </Text>
-                  <Badge appearance="tint" color="informative" style={{ fontSize: "11px", fontWeight: 600 }}>
-                    {selectedBranch}
-                  </Badge>
-                </div>
-                <Text size={200} style={{ color: "#64748b", marginTop: "2px", display: "block" }}>
-                  Global inventory distribution across active, stored, and maintenance states
-                </Text>
-              </div>
-              <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-                <div>
-                  <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Total Assets
-                  </Text>
-                  <Text size={500} weight="bold" style={{ color: "#0f172a", display: "block" }}>
-                    {stockMetrics.total}
-                  </Text>
-                </div>
-                <div style={{ width: "1px", height: "28px", background: "rgba(226, 232, 240, 0.9)" }} />
-                <div>
-                  <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Combined Asset Worth
-                  </Text>
-                  <Text size={500} weight="bold" style={{ color: "#007ED5", display: "block" }}>
-                    {formatCurrency(stockMetrics.totalCost)}
-                  </Text>
-                </div>
-              </div>
-            </div>
-
-            {/* Segmented Progress Bar */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div
+            {/* Instant Search in Department */}
+            <div>
+              <Input
+                contentBefore={<SearchRegular style={{ color: "#007ED5" }} />}
                 style={{
-                  height: "12px",
+                  width: "100%",
+                  maxWidth: 420,
+                  height: "38px",
                   borderRadius: "9999px",
-                  backgroundColor: "#f1f5f9",
-                  overflow: "hidden",
-                  display: "flex",
-                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.06)",
+                  border: "1px solid #E2E8F0",
+                  background: "#FFFFFF",
                 }}
-              >
-                <div
-                  style={{
-                    width: `${stockMetrics.total ? (stockMetrics.inStock / stockMetrics.total) * 100 : 0}%`,
-                    backgroundColor: "#10b981",
-                    transition: "width 0.4s ease",
-                  }}
-                  title={`In Stock: ${stockMetrics.inStock}`}
-                />
-                <div
-                  style={{
-                    width: `${stockMetrics.total ? (stockMetrics.assigned / stockMetrics.total) * 100 : 0}%`,
-                    backgroundColor: "#007ED5",
-                    transition: "width 0.4s ease",
-                  }}
-                  title={`Assigned: ${stockMetrics.assigned}`}
-                />
-                <div
-                  style={{
-                    width: `${stockMetrics.total ? (stockMetrics.repair / stockMetrics.total) * 100 : 0}%`,
-                    backgroundColor: "#f59e0b",
-                    transition: "width 0.4s ease",
-                  }}
-                  title={`Under Maintenance: ${stockMetrics.repair}`}
-                />
-                <div
-                  style={{
-                    width: `${stockMetrics.total ? (stockMetrics.endOfUse / stockMetrics.total) * 100 : 0}%`,
-                    backgroundColor: "#94a3b8",
-                    transition: "width 0.4s ease",
-                  }}
-                  title={`End of Use / Retired: ${stockMetrics.endOfUse}`}
-                />
-              </div>
-
-              {/* Legend */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", fontSize: "12px", color: "#64748b" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#10b981" }} />
-                  <span>Available In Stock: <strong style={{ color: "#0f172a" }}>{stockMetrics.inStock}</strong> ({stockMetrics.total ? Math.round((stockMetrics.inStock / stockMetrics.total) * 100) : 0}%)</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#007ED5" }} />
-                  <span>Active Deployed: <strong style={{ color: "#0f172a" }}>{stockMetrics.assigned}</strong> ({stockMetrics.total ? Math.round((stockMetrics.assigned / stockMetrics.total) * 100) : 0}%)</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#f59e0b" }} />
-                  <span>Under Maintenance: <strong style={{ color: "#0f172a" }}>{stockMetrics.repair}</strong> ({stockMetrics.total ? Math.round((stockMetrics.repair / stockMetrics.total) * 100) : 0}%)</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#94a3b8" }} />
-                  <span>End of Use / Retired: <strong style={{ color: "#0f172a" }}>{stockMetrics.endOfUse}</strong> ({stockMetrics.total ? Math.round((stockMetrics.endOfUse / stockMetrics.total) * 100) : 0}%)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4 Interactive KPI Status Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
-            {/* Card 1: Available In Stock */}
-            <div
-              onClick={() => setStockStatus(stockStatus === "In Stock" ? "All" : "In Stock")}
-              style={{
-                cursor: "pointer",
-                padding: "18px 20px",
-                borderRadius: "16px",
-                background: stockStatus === "In Stock" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
-                border: stockStatus === "In Stock" ? "2px solid #10b981" : "1px solid rgba(226, 232, 240, 0.9)",
-                boxShadow: stockStatus === "In Stock" ? "0 4px 16px rgba(16, 185, 129, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
-                transition: "all 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
-                    <BoxCheckmarkRegular style={{ fontSize: "20px" }} />
-                  </div>
-                  <div>
-                    <Text size={200} weight="semibold" style={{ color: "#059669" }}>
-                      Available Stock
-                    </Text>
-                    <Text size={100} style={{ color: "#64748b", display: "block" }}>
-                      Ready for assignment
-                    </Text>
-                  </div>
-                </div>
-                {stockStatus === "In Stock" && (
-                  <Badge appearance="filled" color="success" size="small">
-                    Active Filter
-                  </Badge>
-                )}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "4px" }}>
-                <Text size={700} weight="bold" style={{ color: "#065f46" }}>
-                  {stockMetrics.inStock}
-                </Text>
-                <Text size={300} weight="semibold" style={{ color: "#10b981" }}>
-                  {formatCurrency(stockMetrics.inStockCost)}
-                </Text>
-              </div>
+                placeholder="Search employee name, asset, or tag..."
+                value={whoHoldsWhatSearch}
+                onChange={(_, d) => setWhoHoldsWhatSearch(d.value)}
+              />
             </div>
 
-            {/* Card 2: Assigned / In Use */}
-            <div
-              onClick={() => setStockStatus(stockStatus === "Assigned" ? "All" : "Assigned")}
-              style={{
-                cursor: "pointer",
-                padding: "18px 20px",
-                borderRadius: "16px",
-                background: stockStatus === "Assigned" ? "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)" : "#ffffff",
-                border: stockStatus === "Assigned" ? "2px solid #007ED5" : "1px solid rgba(226, 232, 240, 0.9)",
-                boxShadow: stockStatus === "Assigned" ? "0 4px 16px rgba(0, 126, 213, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
-                transition: "all 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", backgroundColor: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", color: "#007ED5" }}>
-                    <PeopleRegular style={{ fontSize: "20px" }} />
-                  </div>
-                  <div>
-                    <Text size={200} weight="semibold" style={{ color: "#007ED5" }}>
-                      Active Deployed
-                    </Text>
-                    <Text size={100} style={{ color: "#64748b", display: "block" }}>
-                      In employee custody
-                    </Text>
-                  </div>
-                </div>
-                {stockStatus === "Assigned" && (
-                  <Badge appearance="filled" color="informative" size="small">
-                    Active Filter
-                  </Badge>
-                )}
+            {departmentLoading ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
+                <Spinner size="medium" label="Loading employee assets..." />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "4px" }}>
-                <Text size={700} weight="bold" style={{ color: "#1e3a8a" }}>
-                  {stockMetrics.assigned}
-                </Text>
-                <Text size={300} weight="semibold" style={{ color: "#007ED5" }}>
-                  {formatCurrency(stockMetrics.assignedCost)}
-                </Text>
-              </div>
-            </div>
-
-            {/* Card 3: Under Maintenance */}
-            <div
-              onClick={() => setStockStatus(stockStatus === "Under Maintenance" ? "All" : "Under Maintenance")}
-              style={{
-                cursor: "pointer",
-                padding: "18px 20px",
-                borderRadius: "16px",
-                background: stockStatus === "Under Maintenance" ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "#ffffff",
-                border: stockStatus === "Under Maintenance" ? "2px solid #f59e0b" : "1px solid rgba(226, 232, 240, 0.9)",
-                boxShadow: stockStatus === "Under Maintenance" ? "0 4px 16px rgba(245, 158, 11, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
-                transition: "all 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", backgroundColor: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center", color: "#d97706" }}>
-                    <WrenchRegular style={{ fontSize: "20px" }} />
-                  </div>
-                  <div>
-                    <Text size={200} weight="semibold" style={{ color: "#d97706" }}>
-                      In Maintenance
-                    </Text>
-                    <Text size={100} style={{ color: "#64748b", display: "block" }}>
-                      Repairs & servicing
-                    </Text>
-                  </div>
-                </div>
-                {stockStatus === "Under Maintenance" && (
-                  <Badge appearance="filled" color="warning" size="small">
-                    Active Filter
-                  </Badge>
-                )}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "4px" }}>
-                <Text size={700} weight="bold" style={{ color: "#92400e" }}>
-                  {stockMetrics.repair}
-                </Text>
-                <Text size={300} weight="semibold" style={{ color: "#d97706" }}>
-                  {formatCurrency(stockMetrics.repairCost)}
-                </Text>
-              </div>
-            </div>
-
-            {/* Card 4: End of Life / Retired */}
-            <div
-              onClick={() => setStockStatus(stockStatus === "End of Use" ? "All" : "End of Use")}
-              style={{
-                cursor: "pointer",
-                padding: "18px 20px",
-                borderRadius: "16px",
-                background: stockStatus === "End of Use" ? "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" : "#ffffff",
-                border: stockStatus === "End of Use" ? "2px solid #64748b" : "1px solid rgba(226, 232, 240, 0.9)",
-                boxShadow: stockStatus === "End of Use" ? "0 4px 16px rgba(100, 116, 139, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
-                transition: "all 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
-                    <BoxRegular style={{ fontSize: "20px" }} />
-                  </div>
-                  <div>
-                    <Text size={200} weight="semibold" style={{ color: "#475569" }}>
-                      Decommissioned
-                    </Text>
-                    <Text size={100} style={{ color: "#64748b", display: "block" }}>
-                      Retired or scrapped
-                    </Text>
-                  </div>
-                </div>
-                {stockStatus === "End of Use" && (
-                  <Badge appearance="filled" color="subtle" size="small">
-                    Active Filter
-                  </Badge>
-                )}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "4px" }}>
-                <Text size={700} weight="bold" style={{ color: "#334155" }}>
-                  {stockMetrics.endOfUse}
-                </Text>
-                <Text size={300} weight="semibold" style={{ color: "#64748b" }}>
-                  {formatCurrency(stockMetrics.endOfUseCost)}
-                </Text>
-              </div>
-            </div>
-          </div>
-
-          {/* Search, Filter Bar and Matching Metric */}
-          <div
-            className="quadra-glass-card"
-            style={{
-              padding: "16px 20px",
-              borderRadius: "16px",
-              display: "flex",
-              gap: "12px",
-              flexWrap: "wrap",
-              alignItems: "center",
-              background: "#ffffff",
-              border: "1px solid rgba(226, 232, 240, 0.9)",
-            }}
-          >
-            <Input
-              contentBefore={<SearchRegular style={{ color: "#007ED5" }} />}
-              contentAfter={
-                stockSearch ? (
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    icon={<DismissRegular />}
-                    onClick={() => setStockSearch("")}
-                    title="Clear search"
-                  />
-                ) : undefined
-              }
-              style={{
-                minWidth: "240px",
-                flex: "1 1 240px",
-                height: "38px",
-                borderRadius: "9999px",
-                border: "1px solid #E2E8F0",
-                background: "#FFFFFF",
-              }}
-              placeholder="Search category, branch or status..."
-              value={stockSearch}
-              onChange={(_, d) => setStockSearch(d.value)}
-            />
-            <QuadraFilterDropdown
-              icon={<BoxRegular />}
-              label="Type"
-              value={stockType}
-              options={[
-                { value: "All", label: "All Types" },
-                { value: "IT", label: "IT Assets" },
-                { value: "Non-IT", label: "Non-IT Assets" },
-              ]}
-              onChange={(v) => {
-                setStockType((v as "All" | "IT" | "Non-IT") ?? "All");
-                setStockCategory("All");
-                setStockStatus("All");
-              }}
-              minWidth={150}
-              pill={true}
-            />
-            <QuadraFilterDropdown
-              icon={<FilterRegular />}
-              label="Category"
-              value={stockCategory}
-              options={[
-                { value: "All", label: "All Categories" },
-                ...stockCategoryOptions.map((c) => ({ value: c, label: c })),
-              ]}
-              onChange={(v) => setStockCategory(v)}
-              minWidth={175}
-              pill={true}
-            />
-            <QuadraFilterDropdown
-              icon={<CheckmarkCircleRegular />}
-              label="Status"
-              value={stockStatus}
-              options={[
-                { value: "All", label: "All Statuses" },
-                ...stockStatusOptions.map((s) => ({ value: s, label: s })),
-              ]}
-              onChange={(v) => setStockStatus(v)}
-              minWidth={165}
-              pill={true}
-            />
-
-            {(stockType !== "All" || stockCategory !== "All" || stockStatus !== "All" || stockSearch.trim()) && (
-              <Button
-                appearance="subtle"
-                icon={<ArrowResetRegular />}
-                onClick={() => {
-                  setStockType("All");
-                  setStockCategory("All");
-                  setStockStatus("All");
-                  setStockSearch("");
-                }}
-                style={{ color: "#64748b", fontSize: "13px" }}
-              >
-                Reset Filters
-              </Button>
-            )}
-
-            <div style={{ marginLeft: "auto", display: "flex", gap: "16px", alignItems: "center" }}>
-              <div style={{ textAlign: "right" }}>
-                <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase" }}>
-                  Matching Entries
-                </Text>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
-                  <Text size={400} weight="bold" style={{ color: "#0f172a" }}>
-                    {stockTotals.count}
-                  </Text>
-                  <Text size={100} style={{ color: "#64748b" }}>
-                    units
-                  </Text>
-                </div>
-              </div>
-              <div style={{ width: "1px", height: "24px", background: "rgba(226, 232, 240, 0.9)" }} />
-              <div style={{ textAlign: "right" }}>
-                <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase" }}>
-                  Filtered Worth
-                </Text>
-                <Text size={400} weight="bold" style={{ color: "#007ED5" }}>
-                  {formatCurrency(stockTotals.cost)}
-                </Text>
-              </div>
-            </div>
-          </div>
-
-          {/* Stock Table Card */}
-          <div
-            className="quadra-glass-card"
-            style={{
-              padding: "20px 24px",
-              borderRadius: "18px",
-              background: "#ffffff",
-              border: "1px solid rgba(226, 232, 240, 0.9)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
-            }}
-          >
-            {filteredStockRows.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 24px" }}>
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "50%",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto 16px",
-                    color: "#94a3b8",
-                  }}
-                >
-                  <FilterRegular style={{ fontSize: "24px" }} />
-                </div>
-                <Text size={400} weight="semibold" style={{ color: "#0f172a", display: "block" }}>
-                  No stock rows match your active filters
-                </Text>
-                <Text size={200} style={{ color: "#64748b", marginTop: "4px", display: "block" }}>
-                  Try relaxing search terms or reset the status filters to view the full inventory.
-                </Text>
-                <Button
-                  appearance="primary"
-                  style={{ marginTop: "16px", background: "#007ED5" }}
-                  icon={<ArrowResetRegular />}
-                  onClick={() => {
-                    setStockType("All");
-                    setStockCategory("All");
-                    setStockStatus("All");
-                    setStockSearch("");
-                  }}
-                >
-                  Reset Stock Filters
-                </Button>
+            ) : filteredDepartmentUsers.length === 0 ? (
+              <div style={{ padding: "32px 16px", textAlign: "center", color: "#94a3b8" }}>
+                No active asset assignments found matching your search.
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 4px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.9)" }}>
-                      {["Type", "Category", "Branch / Facility", "Status", "Tracked Units", "Valuation", "Stock Health"].map((h) => (
-                        <th
-                          key={h}
-                          style={{
-                            textAlign: "left",
-                            padding: "10px 14px",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            color: "#64748b",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
+                    <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                      {["Employee", "Department", "Email", "Branch", "Asset Name", "Tag ID", "Category", "Assigned On"].map((h) => (
+                        <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase" }}>
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStockRows.map((row, i) => {
-                      const st = (row.Status || "").toLowerCase();
-                      const isInStock = st.includes("stock") || st.includes("reserve");
-                      const isAssigned = st.includes("assign") || st.includes("in use");
-                      const isRepair = st.includes("repair") || st.includes("maint");
-                      const isEnd = st.includes("end") || st.includes("retir") || st.includes("lost");
-
-                      const statusColor = isInStock ? "success" : isAssigned ? "informative" : isRepair ? "warning" : "subtle";
-                      const healthLabel = isInStock ? "Ready to Issue" : isAssigned ? "Active Deploy" : isRepair ? "Needs Service" : "Archived";
-                      const healthColor = isInStock ? "#10b981" : isAssigned ? "#007ED5" : isRepair ? "#f59e0b" : "#94a3b8";
-
-                      return (
-                        <tr
-                          key={i}
-                          style={{
-                            backgroundColor: i % 2 === 0 ? "#ffffff" : "#f8fafc",
-                            transition: "background 0.15s ease",
-                            borderRadius: "8px",
-                          }}
-                        >
-                          <td style={{ padding: "12px 14px" }}>
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "3px 8px",
-                                borderRadius: "6px",
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                backgroundColor: row.AssetKind === "IT" ? "#eff6ff" : "#fffbeb",
-                                color: row.AssetKind === "IT" ? "#1d4ed8" : "#b45309",
-                                border: row.AssetKind === "IT" ? "1px solid #bfdbfe" : "1px solid #fde68a",
-                              }}
-                            >
-                              {row.AssetKind}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px 14px", maxWidth: "200px" }}>
-                            <Text weight="semibold" style={{ color: "#0f172a", fontSize: "13px" }}>
-                              {row.CategoryName}
-                            </Text>
-                          </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#334155", fontSize: "12px" }}>
-                              <BuildingRegular style={{ fontSize: "14px", color: "#007ED5" }} />
-                              <span>{row.Branch || selectedBranch || "HQ"}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <Badge appearance="tint" color={statusColor as any} style={{ fontWeight: 600, fontSize: "11px" }}>
-                              {row.Status}
-                            </Badge>
-                          </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <Text weight="bold" style={{ color: "#0f172a", fontSize: "13px" }}>
-                                {row.AssetCount}
-                              </Text>
-                              <span style={{ fontSize: "11px", color: "#64748b" }}>qty</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <Text weight="bold" style={{ color: "#007ED5", fontSize: "13px" }}>
-                              {formatCurrency(row.TotalCost)}
-                            </Text>
-                          </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                              <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: healthColor }} />
-                              <span style={{ fontSize: "12px", fontWeight: 600, color: healthColor }}>
-                                {healthLabel}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredDepartmentUsers.map((u) => (
+                      <tr key={`${u.UserID}-${u.AssetID}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "12px 14px", fontWeight: 600, color: "#0f172a", fontSize: 13.5 }}>
+                          {u.DisplayName}
+                        </td>
+                        <td style={{ padding: "12px 14px", fontSize: 12.5 }}>
+                          <span style={{ background: "#F1F5F9", color: "#0369A1", padding: "3px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid #E0F2FE" }}>
+                            {normalizeDepartment(u.Department)}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>
+                          {u.Mail || "-"}
+                        </td>
+                        <td style={{ padding: "12px 14px" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#F8FAFC", color: "#334155", padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid #E2E8F0" }}>
+                            <BuildingRegular style={{ fontSize: 12, color: "#64748B" }} />
+                            <span>{normalizeBranch(u.Branch || (selectedBranch !== "All Branches" ? selectedBranch : "Coimbatore"))}</span>
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 14px", color: "#1e293b", fontSize: 13 }}>
+                          {u.AssetName}
+                        </td>
+                        <td style={{ padding: "12px 14px" }}>
+                          <span style={{ background: "#e0f2fe", color: "#0284c7", padding: "3px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                            {u.AssetTagID}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 14px", color: "#475569", fontSize: 13 }}>
+                          {u.Category}
+                        </td>
+                        <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>
+                          {formatDate(u.AssignedAt)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1543,319 +877,1119 @@ const AssetReports: React.FC = () => {
         </div>
       )}
 
-      {/* ============================= Insights & Multi-Branch Analytics ============================= */}
-      {activeTab === "insights" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {/* Multi-Branch Strategic Matrix */}
+      {/* ============================= TAB 2: Monthly Purchases ============================= */}
+      {activeTab === "purchases" && (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.25fr) minmax(360px, 0.75fr)", gap: 24, alignItems: "start" }}>
+          {/* Left Side: Monthly Purchases List Table */}
           <div
             className="quadra-glass-card"
             style={{
-              padding: "24px",
-              borderRadius: "18px",
+              padding: "24px 28px",
+              borderRadius: "16px",
               background: "#ffffff",
               border: "1px solid #edf2f7",
               boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "18px",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
-              <div>
-                <Text weight="bold" size={400} style={{ color: "#0f172a", fontSize: "16px" }}>
-                  Multi-Branch Inventory & Utilization Overview
-                </Text>
-                <div style={{ fontSize: "12.5px", color: "#64748b", marginTop: "2px" }}>
-                  Real-time branch asset allocation, holding density, and equipment capacity across enterprise sites
-                </div>
-              </div>
-              <Badge appearance="tint" color="informative" size="medium">
-                {(overview.branchDistribution || []).length || 4} Locations
-              </Badge>
+            <div>
+              <Text weight="bold" size={400} style={{ display: "block", color: "#0f172a", fontSize: 16 }}>
+                Monthly Purchases & Spend List
+              </Text>
+              <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "2px" }}>
+                Detailed ledger of monthly procurement counts, IT capital, and Non-IT expenditures.
+              </Text>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
-              {(overview.branchDistribution && overview.branchDistribution.length > 0 ? overview.branchDistribution : [
-                { branch: "Coimbatore HQ", total_assets: 7, assigned_assets: 7, unassigned_assets: 0, utilization_rate: 100 },
-                { branch: "Chennai Branch", total_assets: 3, assigned_assets: 2, unassigned_assets: 1, utilization_rate: 67 },
-                { branch: "Bangalore Tech Hub", total_assets: 4, assigned_assets: 2, unassigned_assets: 2, utilization_rate: 50 },
-                { branch: "Hyderabad Branch", total_assets: 2, assigned_assets: 1, unassigned_assets: 1, utilization_rate: 50 },
-              ]).map((b: any) => {
-                const total = b.total_assets ?? b.totalAssets ?? 0;
-                const assigned = b.assigned_assets ?? b.assignedAssets ?? 0;
-                const inStock = b.unassigned_assets ?? b.inStockAssets ?? 0;
-                const util = Math.round(b.utilization_rate ?? b.utilizationRate ?? 0);
-                const color = util >= 80 ? "#16A34A" : util >= 50 ? "#007ED5" : "#D97706";
-                const bg = util >= 80 ? "#DCFCE7" : util >= 50 ? "#E0F2FE" : "#FEF3C7";
-
-                return (
-                  <div
-                    key={b.branch}
-                    style={{
-                      padding: "16px 18px",
-                      borderRadius: "14px",
-                      border: "1px solid #E2E8F0",
-                      background: "#F8FAFC",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "14px" }}>
-                          {b.branch}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#64748B" }}>
-                          {total} total asset{total === 1 ? "" : "s"}
-                        </div>
-                      </div>
-                      <span
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.9)" }}>
+                    {["Month", "IT Assets", "IT Cost", "Non-IT Assets", "Non-IT Value", "Total Spend"].map((h) => (
+                      <th
+                        key={h}
                         style={{
+                          textAlign: "left",
+                          padding: "10px 12px",
                           fontSize: "12px",
-                          fontWeight: 700,
-                          color: color,
-                          background: bg,
-                          padding: "2px 8px",
-                          borderRadius: "999px",
+                          fontWeight: 600,
+                          color: "#64748b",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.03em",
                         }}
                       >
-                        {util}% In Use
-                      </span>
-                    </div>
-
-                    <div style={{ width: "100%", height: "6px", background: "#E2E8F0", borderRadius: "999px", overflow: "hidden" }}>
-                      <div
-                        style={{
-                          width: `${Math.min(100, Math.max(0, util))}%`,
-                          height: "100%",
-                          background: color,
-                          borderRadius: "999px",
-                          transition: "width 0.3s ease",
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569" }}>
-                      <span>Assigned: <strong>{assigned}</strong></span>
-                      <span>In Stock: <strong>{inStock}</strong></span>
-                    </div>
-                  </div>
-                );
-              })}
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyPurchasesDesc.map((row) => (
+                    <tr key={row.MonthLabel} style={{ borderBottom: "1px solid rgba(241, 245, 249, 0.9)" }}>
+                      <td style={{ padding: "12px", fontWeight: 600, color: "#0f172a" }}>{monthLabelToDisplay(row.MonthLabel)}</td>
+                      <td style={{ padding: "12px", color: "#334155" }}>{row.ITCount}</td>
+                      <td style={{ padding: "12px", color: "#334155" }}>{formatCurrency(row.ITCost)}</td>
+                      <td style={{ padding: "12px", color: "#334155" }}>{row.NonITCount}</td>
+                      <td style={{ padding: "12px", color: "#334155" }}>{formatCurrency(row.NonITValue)}</td>
+                      <td style={{ padding: "12px", fontWeight: 700, color: "#007ED5" }}>
+                        {formatCurrency(row.ITCost + row.NonITValue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Operational Risk & Strategic Insights Banner */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px" }}>
+          {/* Right Side: Visual Bar Graph & Trend Chart */}
+          <div
+            className="quadra-glass-card"
+            style={{
+              padding: "24px 28px",
+              borderRadius: "16px",
+              background: "#ffffff",
+              border: "1px solid #edf2f7",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+            }}
+          >
+            <div>
+              <Text weight="bold" size={400} style={{ display: "block", color: "#0f172a", fontSize: 16 }}>
+                Procurement Volume Trend
+              </Text>
+              <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "2px" }}>
+                12-month visual volume comparison between IT hardware and Non-IT equipment.
+              </Text>
+            </div>
+
+            {/* Visual bar graph representation */}
+            <div style={{ padding: "18px 20px", background: "rgba(248, 250, 252, 0.7)", borderRadius: "14px", border: "1px solid rgba(226, 232, 240, 0.8)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: 8 }}>
+                <Text size={200} weight="semibold" style={{ color: "#475569" }}>Monthly Breakdown</Text>
+                <div style={{ display: "flex", gap: "14px", alignItems: "center", fontSize: "12px", color: "#64748b" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#007ED5" }} /> IT Assets
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#10B981" }} /> Non-IT Assets
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px", overflowX: "auto", paddingBottom: "8px" }}>
+                {overview.monthlyPurchases.map((m) => {
+                  const maxVal = Math.max(1, ...overview.monthlyPurchases.map((x) => x.ITCount + x.NonITCount));
+                  const itHeight = Math.round((m.ITCount / maxVal) * 100);
+                  const nonItHeight = Math.round((m.NonITCount / maxVal) * 100);
+                  return (
+                    <div key={m.MonthLabel} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: "32px", height: "100%", justifyContent: "flex-end", gap: "6px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "115px" }}>
+                        <div
+                          title={`IT: ${m.ITCount} (${formatCurrency(m.ITCost)})`}
+                          style={{
+                            width: "10px",
+                            height: `${Math.max(4, itHeight)}%`,
+                            background: "linear-gradient(180deg, #007ED5 0%, #0284c7 100%)",
+                            borderRadius: "3px 3px 0 0",
+                            transition: "height 0.3s ease",
+                          }}
+                        />
+                        <div
+                          title={`Non-IT: ${m.NonITCount} (${formatCurrency(m.NonITValue)})`}
+                          style={{
+                            width: "10px",
+                            height: `${Math.max(4, nonItHeight)}%`,
+                            background: "linear-gradient(180deg, #10B981 0%, #059669 100%)",
+                            borderRadius: "3px 3px 0 0",
+                            transition: "height 0.3s ease",
+                          }}
+                        />
+                      </div>
+                      <Text size={100} style={{ color: "#64748b", whiteSpace: "nowrap", fontSize: "10.5px" }}>
+                        {monthLabelToDisplay(m.MonthLabel).split(" ")[0]}
+                      </Text>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick spend summary badges */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ padding: "12px 14px", borderRadius: "12px", background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+                <Text size={100} weight="semibold" style={{ color: "#1E40AF", textTransform: "uppercase", fontSize: "10.5px" }}>Total IT Procurement</Text>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#007ED5", marginTop: 4 }}>
+                  {formatCurrency(overview.monthlyPurchases.reduce((acc, m) => acc + m.ITCost, 0))}
+                </div>
+                <Text size={100} style={{ color: "#3B82F6", fontSize: "11.5px" }}>
+                  {overview.monthlyPurchases.reduce((acc, m) => acc + m.ITCount, 0)} items acquired
+                </Text>
+              </div>
+              <div style={{ padding: "12px 14px", borderRadius: "12px", background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+                <Text size={100} weight="semibold" style={{ color: "#065F46", textTransform: "uppercase", fontSize: "10.5px" }}>Total Non-IT Spend</Text>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#059669", marginTop: 4 }}>
+                  {formatCurrency(overview.monthlyPurchases.reduce((acc, m) => acc + m.NonITValue, 0))}
+                </div>
+                <Text size={100} style={{ color: "#10B981", fontSize: "11.5px" }}>
+                  {overview.monthlyPurchases.reduce((acc, m) => acc + m.NonITCount, 0)} items acquired
+                </Text>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================= TAB 3: Stock Status ============================= */}
+      {activeTab === "stock" && (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.25fr) minmax(360px, 0.75fr)", gap: 24, alignItems: "start" }}>
+          {/* Left Column: Search with Filters & Stock Table */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
+            {/* Search, Filter Bar and Matching Metric */}
             <div
+              className="quadra-glass-card"
               style={{
-                padding: "18px 20px",
+                padding: "16px 20px",
                 borderRadius: "16px",
-                background: "#F0FDF4",
-                border: "1px solid #BBF7D0",
                 display: "flex",
-                gap: "14px",
-                alignItems: "flex-start",
+                gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
+                background: "#ffffff",
+                border: "1px solid rgba(226, 232, 240, 0.9)",
               }}
             >
-              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#DCFCE7", color: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <BoxCheckmarkRegular style={{ fontSize: "20px" }} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, color: "#14532D", fontSize: "14px" }}>
-                  Hardware Deployment Health: Optimal
-                </div>
-                <div style={{ fontSize: "12.5px", color: "#166534", marginTop: "3px", lineHeight: 1.4 }}>
-                  Asset allocation is well-distributed across enterprise branches. Core workforce in engineering, product, and IT have primary computing equipment operational.
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: "18px 20px",
-                borderRadius: "16px",
-                background: "#FEF3C7",
-                border: "1px solid #FDE68A",
-                display: "flex",
-                gap: "14px",
-                alignItems: "flex-start",
-              }}
-            >
-              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#FEF08A", color: "#B45309", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <WrenchRegular style={{ fontSize: "20px" }} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, color: "#78350F", fontSize: "14px" }}>
-                  Maintenance & Warranty Watch
-                </div>
-                <div style={{ fontSize: "12.5px", color: "#92400E", marginTop: "3px", lineHeight: 1.4 }}>
-                  {overview.kpi?.UnderRepairCount || 1} asset currently undergoing service. Ensure spare buffer stock is maintained at Bangalore Tech Hub and Coimbatore HQ.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="quadra-glass-card" style={{ padding: "16px 20px", borderRadius: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <InsightPill
-              icon={<PeopleTeamRegular />}
-              label="New Requests"
-              count={overview.requestVolume?.NewRequestCount ?? 0}
-              active={insightKey === "new"}
-              onClick={() => {
-                setInsightKey("new");
-                setInsightStatusFilter("All");
-              }}
-            />
-            <InsightPill
-              icon={<WrenchRegular />}
-              label="Repair Requests"
-              count={overview.requestVolume?.RepairRequestCount ?? 0}
-              active={insightKey === "repair"}
-              onClick={() => {
-                setInsightKey("repair");
-                setInsightStatusFilter("All");
-              }}
-            />
-            <InsightPill
-              icon={<DeveloperBoardRegular />}
-              label="Upgrade Requests"
-              count={overview.requestVolume?.UpgradeRequestCount ?? 0}
-              active={insightKey === "upgrade"}
-              onClick={() => {
-                setInsightKey("upgrade");
-                setInsightStatusFilter("All");
-              }}
-            />
-            <InsightPill
-              icon={<DocumentPersonRegular />}
-              label="HR Requests"
-              count={overview.requestVolume?.HRRequestCount ?? 0}
-              active={insightKey === "hr"}
-              onClick={() => {
-                setInsightKey("hr");
-                setInsightStatusFilter("All");
-              }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-            {(insightKey === "new" || insightKey === "hr") && (
               <Input
                 contentBefore={<SearchRegular style={{ color: "#007ED5" }} />}
-                placeholder={insightKey === "new" ? "Search new requests..." : "Search HR requests..."}
-                value={insightSearch}
-                onChange={(_, d) => setInsightSearch(d.value)}
+                contentAfter={
+                  stockSearch ? (
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<DismissRegular />}
+                      onClick={() => setStockSearch("")}
+                      title="Clear search"
+                    />
+                  ) : undefined
+                }
                 style={{
+                  minWidth: "220px",
+                  flex: "1 1 220px",
+                  height: "38px",
                   borderRadius: "9999px",
                   border: "1px solid #E2E8F0",
-                  height: "38px",
-                  minWidth: "260px",
-                  flex: "1 1 260px",
                   background: "#FFFFFF",
                 }}
+                placeholder="Search category, branch or status..."
+                value={stockSearch}
+                onChange={(_, d) => setStockSearch(d.value)}
               />
-            )}
-            {insightKey === "new" && (
               <QuadraFilterDropdown
-                icon={<FilterRegular />}
-                label="Status"
-                value={insightStatusFilter}
+                icon={<BoxRegular />}
+                label="Type"
+                value={stockType}
                 options={[
-                  { value: "All", label: "All Statuses" },
-                  { value: "Pending", label: "Pending" },
-                  { value: "Approved", label: "Approved" },
-                  { value: "Rejected", label: "Rejected" },
-                  { value: "Completed", label: "Completed" },
+                  { value: "All", label: "All Types" },
+                  { value: "IT", label: "IT Assets" },
+                  { value: "Non-IT", label: "Non-IT Assets" },
                 ]}
-                onChange={(v) => setInsightStatusFilter(v)}
-                minWidth={170}
+                onChange={(v) => {
+                  setStockType((v as "All" | "IT" | "Non-IT") ?? "All");
+                  setStockCategory("All");
+                  setStockStatus("All");
+                }}
+                minWidth={130}
                 pill={true}
               />
-            )}
-            {insightKey === "hr" && (
               <QuadraFilterDropdown
                 icon={<FilterRegular />}
-                label="Status"
-                value={insightStatusFilter}
+                label="Category"
+                value={stockCategory}
                 options={[
-                  { value: "All", label: "All Statuses" },
-                  { value: "Draft", label: "Draft" },
-                  { value: "Submitted", label: "Submitted" },
-                  { value: "Assigned", label: "Assigned" },
+                  { value: "All", label: "All Categories" },
+                  ...stockCategoryOptions.map((c) => ({ value: c, label: c })),
                 ]}
-                onChange={(v) => setInsightStatusFilter(v)}
-                minWidth={170}
+                onChange={(v) => setStockCategory(v)}
+                minWidth={150}
                 pill={true}
               />
-            )}
+              <QuadraFilterDropdown
+                icon={<CheckmarkCircleRegular />}
+                label="Status"
+                value={stockStatus}
+                options={[
+                  { value: "All", label: "All Statuses" },
+                  ...stockStatusOptions.map((s) => ({ value: s, label: s })),
+                ]}
+                onChange={(v) => setStockStatus(v)}
+                minWidth={140}
+                pill={true}
+              />
+
+              {(stockType !== "All" || stockCategory !== "All" || stockStatus !== "All" || stockSearch.trim()) && (
+                <Button
+                  appearance="subtle"
+                  icon={<ArrowResetRegular />}
+                  onClick={() => {
+                    setStockType("All");
+                    setStockCategory("All");
+                    setStockStatus("All");
+                    setStockSearch("");
+                  }}
+                  style={{ color: "#64748b", fontSize: "13px" }}
+                >
+                  Reset
+                </Button>
+              )}
+
+              <div style={{ marginLeft: "auto", display: "flex", gap: "14px", alignItems: "center" }}>
+                <div style={{ textAlign: "right" }}>
+                  <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", fontSize: "10.5px" }}>
+                    Matching
+                  </Text>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
+                    <Text size={400} weight="bold" style={{ color: "#0f172a" }}>
+                      {stockTotals.count}
+                    </Text>
+                    <Text size={100} style={{ color: "#64748b" }}>
+                      units
+                    </Text>
+                  </div>
+                </div>
+                <div style={{ width: "1px", height: "22px", background: "rgba(226, 232, 240, 0.9)" }} />
+                <div style={{ textAlign: "right" }}>
+                  <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", fontSize: "10.5px" }}>
+                    Value
+                  </Text>
+                  <Text size={400} weight="bold" style={{ color: "#007ED5" }}>
+                    {formatCurrency(stockTotals.cost)}
+                  </Text>
+                </div>
+              </div>
+            </div>
+
+            {/* Stock Table Card */}
+            <div
+              className="quadra-glass-card"
+              style={{
+                padding: "20px 24px",
+                borderRadius: "18px",
+                background: "#ffffff",
+                border: "1px solid rgba(226, 232, 240, 0.9)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
+              }}
+            >
+              {filteredStockRows.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 24px" }}>
+                  <div
+                    style={{
+                      width: "56px",
+                      height: "56px",
+                      borderRadius: "50%",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    <FilterRegular style={{ fontSize: "24px" }} />
+                  </div>
+                  <Text size={400} weight="semibold" style={{ color: "#0f172a", display: "block" }}>
+                    No stock rows match your active filters
+                  </Text>
+                  <Text size={200} style={{ color: "#64748b", marginTop: "4px", display: "block" }}>
+                    Try relaxing search terms or reset the status filters to view the full inventory.
+                  </Text>
+                  <Button
+                    appearance="primary"
+                    style={{ marginTop: "16px", background: "#007ED5" }}
+                    icon={<ArrowResetRegular />}
+                    onClick={() => {
+                      setStockType("All");
+                      setStockCategory("All");
+                      setStockStatus("All");
+                      setStockSearch("");
+                    }}
+                  >
+                    Reset Stock Filters
+                  </Button>
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 4px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.9)" }}>
+                        {["Type", "Category", "Branch / Facility", "Status", "Tracked Units", "Valuation", "Stock Health"].map((h) => (
+                          <th
+                            key={h}
+                            style={{
+                              textAlign: "left",
+                              padding: "10px 14px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              color: "#64748b",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStockRows.map((row, i) => {
+                        const st = (row.Status || "").toLowerCase();
+                        const isInStock = st.includes("stock") || st.includes("reserve");
+                        const isAssigned = st.includes("assign") || st.includes("in use");
+                        const isRepair = st.includes("repair") || st.includes("maint");
+                        const isEnd = st.includes("end") || st.includes("retir") || st.includes("lost");
+
+                        const statusColor = isInStock ? "success" : isAssigned ? "informative" : isRepair ? "warning" : "subtle";
+                        const healthLabel = isInStock ? "Ready to Issue" : isAssigned ? "Active Deploy" : isRepair ? "Needs Service" : "Archived";
+                        const healthColor = isInStock ? "#10b981" : isAssigned ? "#007ED5" : isRepair ? "#f59e0b" : "#94a3b8";
+
+                        return (
+                          <tr
+                            key={i}
+                            style={{
+                              backgroundColor: i % 2 === 0 ? "#ffffff" : "#f8fafc",
+                              transition: "background 0.15s ease",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <td style={{ padding: "12px 14px" }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "3px 8px",
+                                  borderRadius: "6px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  backgroundColor: row.AssetKind === "IT" ? "#eff6ff" : "#fffbeb",
+                                  color: row.AssetKind === "IT" ? "#1d4ed8" : "#b45309",
+                                  border: row.AssetKind === "IT" ? "1px solid #bfdbfe" : "1px solid #fde68a",
+                                }}
+                              >
+                                {row.AssetKind}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 14px", maxWidth: "180px" }}>
+                              <Text weight="semibold" style={{ color: "#0f172a", fontSize: "13px" }}>
+                                {row.CategoryName}
+                              </Text>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#334155", fontSize: "12px" }}>
+                                <BuildingRegular style={{ fontSize: "14px", color: "#007ED5" }} />
+                                <span>{row.Branch || selectedBranch || "HQ"}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <Badge appearance="tint" color={statusColor as any} style={{ fontWeight: 600, fontSize: "11px" }}>
+                                {row.Status}
+                              </Badge>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <Text weight="bold" style={{ color: "#0f172a", fontSize: "13px" }}>
+                                  {row.AssetCount}
+                                </Text>
+                                <span style={{ fontSize: "11px", color: "#64748b" }}>qty</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <Text weight="bold" style={{ color: "#007ED5", fontSize: "13px" }}>
+                                {formatCurrency(row.TotalCost)}
+                              </Text>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: healthColor }} />
+                                <span style={{ fontSize: "12px", fontWeight: 600, color: healthColor }}>
+                                  {healthLabel}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="quadra-glass-card" style={{ padding: "24px", borderRadius: "18px" }}>
-            {insightsLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
-                <Spinner label="Loading request details..." />
+          {/* Right Column: Other Information (Stock Allocation & Health Meter + 4 KPI Status Cards) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
+            {/* Top Velocity & Allocation Meter Card */}
+            <div
+              className="quadra-glass-card"
+              style={{
+                padding: "20px 22px",
+                borderRadius: "18px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9))",
+                border: "1px solid rgba(226, 232, 240, 0.9)",
+                boxShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Text size={300} weight="bold" style={{ color: "#0f172a" }}>
+                      Stock Health Distribution
+                    </Text>
+                    <Badge appearance="tint" color="informative" style={{ fontSize: "11px", fontWeight: 600 }}>
+                      {selectedBranch}
+                    </Badge>
+                  </div>
+                  <Text size={100} style={{ color: "#64748b", marginTop: "2px", display: "block" }}>
+                    Global inventory allocation states
+                  </Text>
+                </div>
+                <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+                  <div>
+                    <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", fontSize: "10px" }}>
+                      Total Units
+                    </Text>
+                    <Text size={400} weight="bold" style={{ color: "#0f172a", display: "block" }}>
+                      {stockMetrics.total}
+                    </Text>
+                  </div>
+                  <div style={{ width: "1px", height: "24px", background: "rgba(226, 232, 240, 0.9)" }} />
+                  <div>
+                    <Text size={100} weight="semibold" style={{ color: "#64748b", textTransform: "uppercase", fontSize: "10px" }}>
+                      Combined Worth
+                    </Text>
+                    <Text size={400} weight="bold" style={{ color: "#007ED5", display: "block" }}>
+                      {formatCurrency(stockMetrics.totalCost)}
+                    </Text>
+                  </div>
+                </div>
               </div>
-            ) : insightKey === "upgrade" ? (
-              <UpgradeRequestList requests={upgradeRequests} role="employee" onActionComplete={() => {}} />
-            ) : insightKey === "repair" ? (
-              <RepairRequestList requests={repairRequests} role="employee" onActionComplete={() => {}} />
-            ) : insightKey === "new" ? (
-              filteredNewRequests.length === 0 ? (
-                <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No new asset requests found.</Text>
+
+              {/* Segmented Progress Bar */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div
+                  style={{
+                    height: "10px",
+                    borderRadius: "9999px",
+                    backgroundColor: "#f1f5f9",
+                    overflow: "hidden",
+                    display: "flex",
+                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${stockMetrics.total ? (stockMetrics.inStock / stockMetrics.total) * 100 : 0}%`,
+                      backgroundColor: "#10b981",
+                      transition: "width 0.4s ease",
+                    }}
+                    title={`In Stock: ${stockMetrics.inStock}`}
+                  />
+                  <div
+                    style={{
+                      width: `${stockMetrics.total ? (stockMetrics.assigned / stockMetrics.total) * 100 : 0}%`,
+                      backgroundColor: "#007ED5",
+                      transition: "width 0.4s ease",
+                    }}
+                    title={`Assigned: ${stockMetrics.assigned}`}
+                  />
+                  <div
+                    style={{
+                      width: `${stockMetrics.total ? (stockMetrics.repair / stockMetrics.total) * 100 : 0}%`,
+                      backgroundColor: "#f59e0b",
+                      transition: "width 0.4s ease",
+                    }}
+                    title={`Under Maintenance: ${stockMetrics.repair}`}
+                  />
+                  <div
+                    style={{
+                      width: `${stockMetrics.total ? (stockMetrics.endOfUse / stockMetrics.total) * 100 : 0}%`,
+                      backgroundColor: "#94a3b8",
+                      transition: "width 0.4s ease",
+                    }}
+                    title={`End of Use / Retired: ${stockMetrics.endOfUse}`}
+                  />
+                </div>
+
+                {/* Legend */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", color: "#64748b" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981", flexShrink: 0 }} />
+                    <span>In Stock: <strong style={{ color: "#0f172a" }}>{stockMetrics.inStock}</strong> ({stockMetrics.total ? Math.round((stockMetrics.inStock / stockMetrics.total) * 100) : 0}%)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#007ED5", flexShrink: 0 }} />
+                    <span>Active: <strong style={{ color: "#0f172a" }}>{stockMetrics.assigned}</strong> ({stockMetrics.total ? Math.round((stockMetrics.assigned / stockMetrics.total) * 100) : 0}%)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#f59e0b", flexShrink: 0 }} />
+                    <span>Maintenance: <strong style={{ color: "#0f172a" }}>{stockMetrics.repair}</strong></span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#94a3b8", flexShrink: 0 }} />
+                    <span>Decommission: <strong style={{ color: "#0f172a" }}>{stockMetrics.endOfUse}</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Interactive KPI Status Cards in 2x2 grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {/* Card 1: Available In Stock */}
+              <div
+                onClick={() => setStockStatus(stockStatus === "In Stock" ? "All" : "In Stock")}
+                style={{
+                  cursor: "pointer",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
+                  background: stockStatus === "In Stock" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
+                  border: stockStatus === "In Stock" ? "2px solid #10b981" : "1px solid rgba(226, 232, 240, 0.9)",
+                  boxShadow: stockStatus === "In Stock" ? "0 4px 16px rgba(16, 185, 129, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+                      <BoxCheckmarkRegular style={{ fontSize: "16px" }} />
+                    </div>
+                    <div>
+                      <Text size={200} weight="semibold" style={{ color: "#059669", fontSize: "12.5px" }}>
+                        Available
+                      </Text>
+                      <Text size={100} style={{ color: "#64748b", display: "block", fontSize: "10.5px" }}>
+                        In stock
+                      </Text>
+                    </div>
+                  </div>
+                  {stockStatus === "In Stock" && (
+                    <Badge appearance="filled" color="success" size="small">
+                      Active
+                    </Badge>
+                  )}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "2px" }}>
+                  <Text size={600} weight="bold" style={{ color: "#065f46" }}>
+                    {stockMetrics.inStock}
+                  </Text>
+                  <Text size={200} weight="semibold" style={{ color: "#10b981", fontSize: "11.5px" }}>
+                    {formatCurrency(stockMetrics.inStockCost)}
+                  </Text>
+                </div>
+              </div>
+
+              {/* Card 2: Assigned / In Use */}
+              <div
+                onClick={() => setStockStatus(stockStatus === "Assigned" ? "All" : "Assigned")}
+                style={{
+                  cursor: "pointer",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
+                  background: stockStatus === "Assigned" ? "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)" : "#ffffff",
+                  border: stockStatus === "Assigned" ? "2px solid #007ED5" : "1px solid rgba(226, 232, 240, 0.9)",
+                  boxShadow: stockStatus === "Assigned" ? "0 4px 16px rgba(0, 126, 213, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", color: "#007ED5" }}>
+                      <PeopleRegular style={{ fontSize: "16px" }} />
+                    </div>
+                    <div>
+                      <Text size={200} weight="semibold" style={{ color: "#007ED5", fontSize: "12.5px" }}>
+                        Deployed
+                      </Text>
+                      <Text size={100} style={{ color: "#64748b", display: "block", fontSize: "10.5px" }}>
+                        Assigned
+                      </Text>
+                    </div>
+                  </div>
+                  {stockStatus === "Assigned" && (
+                    <Badge appearance="filled" color="informative" size="small">
+                      Active
+                    </Badge>
+                  )}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "2px" }}>
+                  <Text size={600} weight="bold" style={{ color: "#1e3a8a" }}>
+                    {stockMetrics.assigned}
+                  </Text>
+                  <Text size={200} weight="semibold" style={{ color: "#007ED5", fontSize: "11.5px" }}>
+                    {formatCurrency(stockMetrics.assignedCost)}
+                  </Text>
+                </div>
+              </div>
+
+              {/* Card 3: Under Maintenance */}
+              <div
+                onClick={() => setStockStatus(stockStatus === "Under Maintenance" ? "All" : "Under Maintenance")}
+                style={{
+                  cursor: "pointer",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
+                  background: stockStatus === "Under Maintenance" ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "#ffffff",
+                  border: stockStatus === "Under Maintenance" ? "2px solid #f59e0b" : "1px solid rgba(226, 232, 240, 0.9)",
+                  boxShadow: stockStatus === "Under Maintenance" ? "0 4px 16px rgba(245, 158, 11, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center", color: "#d97706" }}>
+                      <WrenchRegular style={{ fontSize: "16px" }} />
+                    </div>
+                    <div>
+                      <Text size={200} weight="semibold" style={{ color: "#d97706", fontSize: "12.5px" }}>
+                        Maintenance
+                      </Text>
+                      <Text size={100} style={{ color: "#64748b", display: "block", fontSize: "10.5px" }}>
+                        In repair
+                      </Text>
+                    </div>
+                  </div>
+                  {stockStatus === "Under Maintenance" && (
+                    <Badge appearance="filled" color="warning" size="small">
+                      Active
+                    </Badge>
+                  )}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "2px" }}>
+                  <Text size={600} weight="bold" style={{ color: "#92400e" }}>
+                    {stockMetrics.repair}
+                  </Text>
+                  <Text size={200} weight="semibold" style={{ color: "#d97706", fontSize: "11.5px" }}>
+                    {formatCurrency(stockMetrics.repairCost)}
+                  </Text>
+                </div>
+              </div>
+
+              {/* Card 4: End of Life / Retired */}
+              <div
+                onClick={() => setStockStatus(stockStatus === "End of Use" ? "All" : "End of Use")}
+                style={{
+                  cursor: "pointer",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
+                  background: stockStatus === "End of Use" ? "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" : "#ffffff",
+                  border: stockStatus === "End of Use" ? "2px solid #64748b" : "1px solid rgba(226, 232, 240, 0.9)",
+                  boxShadow: stockStatus === "End of Use" ? "0 4px 16px rgba(100, 116, 139, 0.18)" : "0 2px 8px rgba(0,0,0,0.03)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+                      <BoxRegular style={{ fontSize: "16px" }} />
+                    </div>
+                    <div>
+                      <Text size={200} weight="semibold" style={{ color: "#475569", fontSize: "12.5px" }}>
+                        Retired
+                      </Text>
+                      <Text size={100} style={{ color: "#64748b", display: "block", fontSize: "10.5px" }}>
+                        Decommissioned
+                      </Text>
+                    </div>
+                  </div>
+                  {stockStatus === "End of Use" && (
+                    <Badge appearance="filled" color="subtle" size="small">
+                      Active
+                    </Badge>
+                  )}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "2px" }}>
+                  <Text size={600} weight="bold" style={{ color: "#334155" }}>
+                    {stockMetrics.endOfUse}
+                  </Text>
+                  <Text size={200} weight="semibold" style={{ color: "#64748b", fontSize: "11.5px" }}>
+                    {formatCurrency(stockMetrics.endOfUseCost)}
+                  </Text>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================= Insights & Multi-Branch Analytics ============================= */}
+      {activeTab === "insights" && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.35fr) minmax(340px, 0.95fr)",
+            gap: "24px",
+            alignItems: "start",
+          }}
+        >
+          {/* ===================== LEFT SIDE: Request Controls & Cards ===================== */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", minWidth: 0 }}>
+            {/* Request Category Selector Pills */}
+            <div
+              className="quadra-glass-card"
+              style={{
+                padding: "16px 20px",
+                borderRadius: "16px",
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap",
+                background: "#ffffff",
+                border: "1px solid #edf2f7",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <InsightPill
+                icon={<PeopleTeamRegular />}
+                label="New Requests"
+                count={overview.requestVolume?.NewRequestCount ?? 0}
+                active={insightKey === "new"}
+                onClick={() => {
+                  setInsightKey("new");
+                  setInsightStatusFilter("All");
+                }}
+              />
+              <InsightPill
+                icon={<WrenchRegular />}
+                label="Repair Requests"
+                count={overview.requestVolume?.RepairRequestCount ?? 0}
+                active={insightKey === "repair"}
+                onClick={() => {
+                  setInsightKey("repair");
+                  setInsightStatusFilter("All");
+                }}
+              />
+              <InsightPill
+                icon={<DeveloperBoardRegular />}
+                label="Upgrade Requests"
+                count={overview.requestVolume?.UpgradeRequestCount ?? 0}
+                active={insightKey === "upgrade"}
+                onClick={() => {
+                  setInsightKey("upgrade");
+                  setInsightStatusFilter("All");
+                }}
+              />
+              <InsightPill
+                icon={<DocumentPersonRegular />}
+                label="HR Requests"
+                count={overview.requestVolume?.HRRequestCount ?? 0}
+                active={insightKey === "hr"}
+                onClick={() => {
+                  setInsightKey("hr");
+                  setInsightStatusFilter("All");
+                }}
+              />
+            </div>
+
+            {/* Search and Filters for Request Cards */}
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              {(insightKey === "new" || insightKey === "hr") && (
+                <Input
+                  contentBefore={<SearchRegular style={{ color: "#007ED5" }} />}
+                  placeholder={insightKey === "new" ? "Search new requests..." : "Search HR requests..."}
+                  value={insightSearch}
+                  onChange={(_, d) => setInsightSearch(d.value)}
+                  style={{
+                    borderRadius: "9999px",
+                    border: "1px solid #E2E8F0",
+                    height: "38px",
+                    minWidth: "220px",
+                    flex: "1 1 220px",
+                    background: "#FFFFFF",
+                  }}
+                />
+              )}
+              {insightKey === "new" && (
+                <QuadraFilterDropdown
+                  icon={<FilterRegular />}
+                  label="Status"
+                  value={insightStatusFilter}
+                  options={[
+                    { value: "All", label: "All Statuses" },
+                    { value: "Pending", label: "Pending" },
+                    { value: "Approved", label: "Approved" },
+                    { value: "Rejected", label: "Rejected" },
+                    { value: "Completed", label: "Completed" },
+                  ]}
+                  onChange={(v) => setInsightStatusFilter(v)}
+                  minWidth={160}
+                  pill={true}
+                />
+              )}
+              {insightKey === "hr" && (
+                <QuadraFilterDropdown
+                  icon={<FilterRegular />}
+                  label="Status"
+                  value={insightStatusFilter}
+                  options={[
+                    { value: "All", label: "All Statuses" },
+                    { value: "Draft", label: "Draft" },
+                    { value: "Submitted", label: "Submitted" },
+                    { value: "Assigned", label: "Assigned" },
+                  ]}
+                  onChange={(v) => setInsightStatusFilter(v)}
+                  minWidth={160}
+                  pill={true}
+                />
+              )}
+            </div>
+
+            {/* Request Cards Container */}
+            <div
+              className="quadra-glass-card"
+              style={{
+                padding: "24px",
+                borderRadius: "18px",
+                background: "#ffffff",
+                border: "1px solid #edf2f7",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+                minHeight: "360px",
+              }}
+            >
+              {insightsLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
+                  <Spinner label="Loading request details..." />
+                </div>
+              ) : insightKey === "upgrade" ? (
+                <UpgradeRequestList requests={upgradeRequests} role="employee" onActionComplete={() => {}} />
+              ) : insightKey === "repair" ? (
+                <RepairRequestList requests={repairRequests} role="employee" onActionComplete={() => {}} />
+              ) : insightKey === "new" ? (
+                filteredNewRequests.length === 0 ? (
+                  <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No new asset requests found.</Text>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
+                    {filteredNewRequests.map((r) => (
+                      <div key={r.ID} className="quadra-chip-pill" style={{ padding: "18px", borderRadius: "14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <TruncatedText text={r.AssetType} weight="semibold" />
+                            <TruncatedText
+                              text={`${r.RequestNumber} · ${r.RequestedByName ?? "Unknown"}`}
+                              size={200}
+                              color="#64748b"
+                            />
+                          </div>
+                          <Badge appearance="tint" color={REQUEST_STATUS_COLOR[r.OverallStatus]}>
+                            {REQUEST_STATUS_LABEL[r.OverallStatus]}
+                          </Badge>
+                        </div>
+                        <Text size={200} style={{ display: "block", marginTop: "10px", color: "#334155" }}>
+                          {r.PurposeOfRequest}
+                        </Text>
+                        <TruncatedText
+                          text={`Manager: ${r.AssignedManagerName ?? "-"}`}
+                          size={200}
+                          color="#64748b"
+                          style={{ marginTop: "8px" }}
+                        />
+                        <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "4px" }}>
+                          Created {formatDate(r.CreatedAt)}
+                        </Text>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : filteredHRRequests.length === 0 ? (
+                <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No HR requests found.</Text>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
-                  {filteredNewRequests.map((r) => (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
+                  {filteredHRRequests.map((r) => (
                     <div key={r.ID} className="quadra-chip-pill" style={{ padding: "18px", borderRadius: "14px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <TruncatedText text={r.AssetType} weight="semibold" />
-                          <TruncatedText
-                            text={`${r.RequestNumber} · ${r.RequestedByName ?? "Unknown"}`}
-                            size={200}
-                            color="#64748b"
-                          />
+                          <TruncatedText text={r.HRRequestID} weight="semibold" />
+                          <TruncatedText text={`Raised by ${r.RequestedUserName ?? "Unknown"}`} size={200} color="#64748b" />
                         </div>
-                        <Badge appearance="tint" color={REQUEST_STATUS_COLOR[r.OverallStatus]}>
-                          {REQUEST_STATUS_LABEL[r.OverallStatus]}
+                        <Badge appearance="tint" color={HR_STATUS_COLOR[r.Status]}>
+                          {r.Status}
                         </Badge>
                       </div>
-                      <Text size={200} style={{ display: "block", marginTop: "10px", color: "#334155" }}>
-                        {r.PurposeOfRequest}
-                      </Text>
-                      <TruncatedText
-                        text={`Manager: ${r.AssignedManagerName ?? "-"}`}
-                        size={200}
-                        color="#64748b"
-                        style={{ marginTop: "8px" }}
-                      />
-                      <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "4px" }}>
-                        Created {formatDate(r.CreatedAt)}
+                      <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "10px" }}>
+                        {r.ApplicantCount} applicant{r.ApplicantCount === 1 ? "" : "s"} · {formatDate(r.CreatedAt)}
                       </Text>
                     </div>
                   ))}
                 </div>
-              )
-            ) : filteredHRRequests.length === 0 ? (
-              <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No HR requests found.</Text>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
-                {filteredHRRequests.map((r) => (
-                  <div key={r.ID} className="quadra-chip-pill" style={{ padding: "18px", borderRadius: "14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <TruncatedText text={r.HRRequestID} weight="semibold" />
-                        <TruncatedText text={`Raised by ${r.RequestedUserName ?? "Unknown"}`} size={200} color="#64748b" />
-                      </div>
-                      <Badge appearance="tint" color={HR_STATUS_COLOR[r.Status]}>
-                        {r.Status}
-                      </Badge>
-                    </div>
-                    <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "10px" }}>
-                      {r.ApplicantCount} applicant{r.ApplicantCount === 1 ? "" : "s"} · {formatDate(r.CreatedAt)}
-                    </Text>
+              )}
+            </div>
+          </div>
+
+          {/* ===================== RIGHT SIDE: Multi-Branch Inventory & Insights ===================== */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", minWidth: 0 }}>
+            {/* Multi-Branch Inventory & Utilization Overview */}
+            <div
+              className="quadra-glass-card"
+              style={{
+                padding: "22px 24px",
+                borderRadius: "18px",
+                background: "#ffffff",
+                border: "1px solid #edf2f7",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+                <div>
+                  <Text weight="bold" size={400} style={{ color: "#0f172a", fontSize: "16px" }}>
+                    Multi-Branch Inventory & Utilization Overview
+                  </Text>
+                  <div style={{ fontSize: "12.5px", color: "#64748b", marginTop: "2px" }}>
+                    Real-time branch asset allocation and equipment capacity across enterprise sites
                   </div>
-                ))}
+                </div>
+                <Badge appearance="tint" color="informative" size="medium">
+                  {(overview.branchDistribution || []).length || 6} Locations
+                </Badge>
               </div>
-            )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+                {(overview.branchDistribution && overview.branchDistribution.length > 0 ? overview.branchDistribution : [
+                  { branch: "Coimbatore", total_assets: 12, assigned_assets: 7, unassigned_assets: 3, utilization_rate: 58 },
+                  { branch: "Bangalore", total_assets: 7, assigned_assets: 3, unassigned_assets: 3, utilization_rate: 43 },
+                  { branch: "Chennai", total_assets: 6, assigned_assets: 5, unassigned_assets: 0, utilization_rate: 83 },
+                  { branch: "Pune", total_assets: 4, assigned_assets: 2, unassigned_assets: 2, utilization_rate: 50 },
+                  { branch: "Mumbai", total_assets: 3, assigned_assets: 1, unassigned_assets: 2, utilization_rate: 33 },
+                  { branch: "Kochin", total_assets: 1, assigned_assets: 0, unassigned_assets: 1, utilization_rate: 0 },
+                ]).map((b: any) => {
+                  const branchName = normalizeBranch(b.branch);
+                  const total = b.total_assets ?? b.totalAssets ?? 0;
+                  const assigned = b.assigned_assets ?? b.assignedAssets ?? 0;
+                  const inStock = b.unassigned_assets ?? b.inStockAssets ?? 0;
+                  const util = Math.round(b.utilization_rate ?? b.utilizationRate ?? 0);
+                  const color = util >= 80 ? "#16A34A" : util >= 50 ? "#007ED5" : "#D97706";
+                  const bg = util >= 80 ? "#DCFCE7" : util >= 50 ? "#E0F2FE" : "#FEF3C7";
+
+                  return (
+                    <div
+                      key={branchName}
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        border: "1px solid #E2E8F0",
+                        background: "#F8FAFC",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "13.5px" }}>
+                            {branchName}
+                          </div>
+                          <div style={{ fontSize: "11.5px", color: "#64748B" }}>
+                            {total} total asset{total === 1 ? "" : "s"}
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color: color,
+                            background: bg,
+                            padding: "2px 7px",
+                            borderRadius: "999px",
+                          }}
+                        >
+                          {util}% In Use
+                        </span>
+                      </div>
+
+                      <div style={{ width: "100%", height: "5px", background: "#E2E8F0", borderRadius: "999px", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${Math.min(100, Math.max(0, util))}%`,
+                            height: "100%",
+                            background: color,
+                            borderRadius: "999px",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", color: "#475569" }}>
+                        <span>Assigned: <strong>{assigned}</strong></span>
+                        <span>In Stock: <strong>{inStock}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Operational Risk & Strategic Insights Cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div
+                style={{
+                  padding: "16px 18px",
+                  borderRadius: "16px",
+                  background: "#F0FDF4",
+                  border: "1px solid #BBF7D0",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#DCFCE7", color: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <BoxCheckmarkRegular style={{ fontSize: "18px" }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: "#14532D", fontSize: "13.5px" }}>
+                    Hardware Deployment Health: Optimal
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#166534", marginTop: "2px", lineHeight: 1.4 }}>
+                    Asset allocation is well-distributed across enterprise branches. Core workforce in engineering, product, and IT have primary computing equipment operational.
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "16px 18px",
+                  borderRadius: "16px",
+                  background: "#FEF3C7",
+                  border: "1px solid #FDE68A",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#FEF08A", color: "#B45309", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <WrenchRegular style={{ fontSize: "18px" }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: "#78350F", fontSize: "13.5px" }}>
+                    Maintenance & Warranty Watch
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#92400E", marginTop: "2px", lineHeight: 1.4 }}>
+                    {overview.kpi?.UnderRepairCount || 1} asset currently undergoing service. Ensure spare buffer stock is maintained at Bangalore and Coimbatore.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

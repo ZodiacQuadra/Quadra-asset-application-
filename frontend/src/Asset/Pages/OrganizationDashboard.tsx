@@ -60,18 +60,26 @@ const STATUS_COLOR: Record<HRRequestStatus, "warning" | "informative" | "success
 const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString("en-IN") : "-");
 
 const DEPARTMENT_FLEET = [
-  { name: "Engineering & Tech", total: 580, inUse: 520, value: "₹2.15 Cr", percent: 40, color: "#007ED5" },
-  { name: "Product & UI/UX Design", total: 240, inUse: 215, value: "₹92.4 L", percent: 16.5, color: "#8764B8" },
-  { name: "Sales & Account Mgmt", total: 260, inUse: 230, value: "₹88.5 L", percent: 18, color: "#10B981" },
-  { name: "Operations & HR", total: 210, inUse: 185, value: "₹74.0 L", percent: 14.5, color: "#F59E0B" },
-  { name: "Finance & Legal", total: 160, inUse: 140, value: "₹54.1 L", percent: 11, color: "#0284C7" },
+  { name: "Intelligent Secure Productivity Group", total: 240, inUse: 210, value: "₹88.5 L", percent: 16.5, color: "#007ED5" },
+  { name: "Enterprise AI & Cloud Group", total: 210, inUse: 185, value: "₹78.4 L", percent: 14.5, color: "#8764B8" },
+  { name: "Hybrid Cloud & Digital Work", total: 190, inUse: 165, value: "₹71.2 L", percent: 13, color: "#0284C7" },
+  { name: "Cyber Security Solution Group", total: 160, inUse: 140, value: "₹62.0 L", percent: 11, color: "#E11D48" },
+  { name: "Google SBU", total: 140, inUse: 120, value: "₹52.8 L", percent: 9.5, color: "#10B981" },
+  { name: "AWS SBU", total: 135, inUse: 115, value: "₹50.5 L", percent: 9.3, color: "#F59E0B" },
+  { name: "Azure SBU", total: 130, inUse: 110, value: "₹48.6 L", percent: 9, color: "#0078D4" },
+  { name: "Accelerated Intelligence Group", total: 100, inUse: 85, value: "₹41.2 L", percent: 7, color: "#7C3AED" },
+  { name: "Operations", total: 65, inUse: 55, value: "₹21.4 L", percent: 4.5, color: "#64748B" },
+  { name: "Corporate Services", total: 45, inUse: 40, value: "₹18.2 L", percent: 3.1, color: "#059669" },
+  { name: "Executive Management", total: 35, inUse: 30, value: "₹16.2 L", percent: 2.4, color: "#D97706" },
 ];
 
 const BRANCH_ALLOCATIONS = [
-  { branch: "Chennai Corporate HQ", total: 820, inUse: 740, buffer: 80, address: "OMR IT Corridor, Chennai" },
-  { branch: "Bangalore Innovation Center", total: 380, inUse: 330, buffer: 50, address: "Whitefield Tech Park, Bangalore" },
-  { branch: "Hyderabad Development Hub", total: 150, inUse: 125, buffer: 25, address: "HITEC City, Hyderabad" },
-  { branch: "Remote & Distributed Workforce", total: 100, inUse: 95, buffer: 5, address: "PAN-India Remote Deployments" },
+  { branch: "Coimbatore", total: 420, inUse: 375, buffer: 45, address: "Avinashi Road, Peelamedu, Coimbatore - 641004" },
+  { branch: "Chennai", total: 340, inUse: 300, buffer: 40, address: "OMR IT Corridor, Sholinganallur, Chennai - 600119" },
+  { branch: "Bangalore", total: 290, inUse: 255, buffer: 35, address: "Whitefield Tech Park, Bangalore - 560066" },
+  { branch: "Pune", total: 160, inUse: 135, buffer: 25, address: "Hinjawadi Phase 1, Pune - 411057" },
+  { branch: "Mumbai", total: 140, inUse: 120, buffer: 20, address: "Bandra Kurla Complex (BKC), Mumbai - 400051" },
+  { branch: "Kochin", total: 100, inUse: 85, buffer: 15, address: "Infopark Phase 2, Kakkanad, Kochin - 682042" },
 ];
 
 const OrganizationDashboard: React.FC = () => {
@@ -205,12 +213,11 @@ const OrganizationDashboard: React.FC = () => {
       {portal}
       <div
         style={{
-          padding: "28px 36px",
+          width: "100%",
+          padding: "4px 0 28px",
           display: "flex",
           flexDirection: "column",
           gap: "24px",
-          maxWidth: "1280px",
-          margin: "0 auto",
         }}
       >
         {/* Header with Navigation & New Requisition */}

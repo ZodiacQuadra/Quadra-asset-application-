@@ -141,9 +141,43 @@ const ReportLostAssetPanel: React.FC<ReportLostAssetPanelProps> = ({
     >
       {portal}
       <Toaster toasterId={toasterId} />
-      <DrawerHeader>
-        <DrawerHeaderTitle action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}>
-          Report Lost Asset{assets.length > 1 ? "s" : ""}
+      <DrawerHeader style={{ borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => onOpenChange(false)}
+            />
+          }
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "10px",
+                background: "#FEF2F2",
+                color: "#EF4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "20px",
+                flexShrink: 0,
+              }}
+            >
+              <WarningRegular />
+            </div>
+            <div>
+              <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A" }}>
+                Report Lost Hardware
+              </div>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 400 }}>
+                Notify IT & Facilities of missing or lost company assets
+              </div>
+            </div>
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
       <DrawerBody>
@@ -228,18 +262,24 @@ const ReportLostAssetPanel: React.FC<ReportLostAssetPanelProps> = ({
             </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "20px" }}>
-            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #E2E8F0" }}>
+            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={submitting} style={{ borderRadius: "9999px", padding: "8px 22px" }}>
               Cancel
             </Button>
             <Button
               appearance="primary"
-              style={{ background: "#007ED5", borderColor: "#007ED5" }}
+              style={{
+                background: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
+                borderRadius: "9999px",
+                padding: "8px 24px",
+                fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(239, 68, 68, 0.25)",
+              }}
               onClick={handleSubmit}
               disabled={submitting || assets.length === 0}
               icon={submitting ? <Spinner size="tiny" /> : undefined}
             >
-              Submit
+              {submitting ? "Submitting..." : "Report Lost"}
             </Button>
           </div>
         </div>

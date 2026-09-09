@@ -295,11 +295,11 @@ const AssetServiceRequestPanel: React.FC<AssetServiceRequestPanelProps> = ({
       open={open}
       position="end"
       onOpenChange={(_, data) => onOpenChange(data.open)}
-      style={{ width: "60vw" }}
+      style={{ width: "min(680px, 94vw)", background: "#ffffff" }}
     >
       <Toaster toasterId={toasterId} />
       {portal}
-      <DrawerHeader>
+      <DrawerHeader style={{ borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
         <DrawerHeaderTitle
           action={
             <Button
@@ -310,61 +310,100 @@ const AssetServiceRequestPanel: React.FC<AssetServiceRequestPanelProps> = ({
             />
           }
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {getIcon()}
-            {requestType === "upgrade" ? "Hardware Upgrade" : "Report Issue & Request Repair"}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "10px",
+                background: requestType === "upgrade" ? "#ECFDF5" : "#FFFBEB",
+                color: requestType === "upgrade" ? "#10B981" : "#D97706",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "20px",
+                flexShrink: 0,
+              }}
+            >
+              {getIcon()}
+            </div>
+            <div>
+              <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A" }}>
+                {requestType === "upgrade" ? "Hardware Upgrade Request" : "Report Issue & Request Repair"}
+              </div>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 400 }}>
+                {requestType === "upgrade"
+                  ? "Submit a component specification upgrade for management approval"
+                  : "Submit a breakdown or malfunction report for IT service"}
+              </div>
+            </div>
           </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody>
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingTop: "8px" }}>
+      <DrawerBody style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
 
           {/* ===================== SEGMENTED CONTROL ===================== */}
-          <div style={{ 
-            display: 'flex', 
-            background: '#fff', 
-            border: '1px solid #E1DFDD', 
-            borderRadius: '999px', 
-            padding: '4px', 
-            width: 'fit-content', 
-            margin: '0 0 16px 0',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}>
-            <button 
+          <div
+            style={{
+              display: "inline-flex",
+              background: "#F1F5F9",
+              border: "1px solid #E2E8F0",
+              borderRadius: "9999px",
+              padding: "4px",
+              width: "fit-content",
+              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)",
+            }}
+          >
+            <button
+              type="button"
               onClick={() => {
                 setRequestType("upgrade");
                 setError(null);
               }}
               style={{
-                padding: '8px 24px', 
-                borderRadius: '999px', 
-                border: 'none', 
-                background: requestType === "upgrade" ? '#0066B3' : 'transparent',
-                color: requestType === "upgrade" ? '#fff' : '#0066B3',
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 20px",
+                borderRadius: "9999px",
+                border: "none",
+                background: requestType === "upgrade" ? "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)" : "transparent",
+                color: requestType === "upgrade" ? "#ffffff" : "#64748B",
                 fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '14px'
-              }}>
-              Hardware Upgrade
+                cursor: "pointer",
+                transition: "all 0.18s ease",
+                fontSize: "13.5px",
+                boxShadow: requestType === "upgrade" ? "0 2px 8px rgba(0, 126, 213, 0.28)" : "none",
+              }}
+            >
+              <AddCircleRegular style={{ fontSize: "16px" }} />
+              <span>Hardware Upgrade</span>
             </button>
-            <button 
+            <button
+              type="button"
               onClick={() => {
                 setRequestType("repair");
                 setError(null);
               }}
               style={{
-                padding: '8px 24px', 
-                borderRadius: '999px', 
-                border: 'none', 
-                background: requestType === "repair" ? '#0066B3' : 'transparent',
-                color: requestType === "repair" ? '#fff' : '#0066B3',
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 20px",
+                borderRadius: "9999px",
+                border: "none",
+                background: requestType === "repair" ? "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)" : "transparent",
+                color: requestType === "repair" ? "#ffffff" : "#64748B",
                 fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '14px'
-              }}>
-              Report Issue & Request Repair
+                cursor: "pointer",
+                transition: "all 0.18s ease",
+                fontSize: "13.5px",
+                boxShadow: requestType === "repair" ? "0 2px 8px rgba(0, 126, 213, 0.28)" : "none",
+              }}
+            >
+              <WrenchRegular style={{ fontSize: "16px" }} />
+              <span>Request Repair</span>
             </button>
           </div>
 
@@ -536,11 +575,31 @@ const AssetServiceRequestPanel: React.FC<AssetServiceRequestPanelProps> = ({
 
           {error && <Text style={{ color: "var(--colorPaletteRedForeground1)" }}>{error}</Text>}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: "12px",
+              paddingTop: "16px",
+              borderTop: "1px solid #E2E8F0",
+              marginTop: "auto",
+            }}
+          >
+            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={submitting} style={{ borderRadius: "9999px", padding: "8px 22px" }}>
+              Cancel
+            </Button>
             <Button
               appearance="primary"
               onClick={handleSubmit}
               disabled={submitting || (requestType === "upgrade" && hasPendingRequestForSelected)}
+              style={{
+                background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+                borderRadius: "9999px",
+                padding: "8px 26px",
+                fontWeight: 600,
+                boxShadow: "0 2px 8px rgba(0, 126, 213, 0.25)",
+              }}
             >
               {submitting ? (
                 <Spinner size="tiny" />

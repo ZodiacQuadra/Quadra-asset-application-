@@ -58,13 +58,13 @@ const EmployeesAssetList: React.FC = () => {
   }, [users, search]);
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "28px 20px" }}>
+    <div style={{ width: "100%", padding: "4px 0 28px", display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Page Header */}
-      <div style={{ marginBottom: "28px" }}>
+      <div>
         <h1
           style={{
             margin: 0,
-            fontSize: "28px",
+            fontSize: "26px",
             fontWeight: 700,
             color: "#0f172a",
             letterSpacing: "-0.02em",
@@ -73,12 +73,12 @@ const EmployeesAssetList: React.FC = () => {
           Employee List
         </h1>
         <p style={{ margin: "6px 0 0 0", fontSize: "14px", color: "#64748b" }}>
-          Browse and manage employee asset assignments
+          Browse and manage employee asset assignments across corporate branches and departments
         </p>
       </div>
 
       {/* Search Bar */}
-      <div style={{ position: "relative", marginBottom: "20px" }}>
+      <div style={{ position: "relative" }}>
         <div
           style={{
             position: "absolute",
@@ -97,10 +97,11 @@ const EmployeesAssetList: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search employees..."
+          placeholder="Search employees by name, title, department, email..."
           style={{
             width: "100%",
-            padding: "14px 16px 14px 44px",
+            height: "44px",
+            padding: "0 44px 0 44px",
             background: "#ffffff",
             border: "1px solid #e2e8f0",
             borderRadius: "12px",
@@ -112,14 +113,34 @@ const EmployeesAssetList: React.FC = () => {
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = "#3b82f6";
-            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+            e.currentTarget.style.borderColor = "#007ed5";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(0, 126, 213, 0.1)";
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = "#e2e8f0";
             e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.02)";
           }}
         />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            style={{
+              position: "absolute",
+              right: "14px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              border: "none",
+              background: "transparent",
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontSize: "16px",
+              padding: "4px",
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Employee Cards List */}

@@ -249,170 +249,166 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <Toaster toasterId={toasterId} />
 
-      {/* Toolbar replicating Employee Request sub-screen */}
+    {/* Toolbar: Two-row layout — tabs on top, search+view below */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+      {/* Row 1: Status Pill Tabs — full width */}
       <div
         style={{
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          background: "#F8FAFC",
+          padding: "4px 6px",
+          borderRadius: "999px",
+          border: "1px solid #E2E8F0",
+          gap: "4px",
           flexWrap: "wrap",
-          gap: "16px",
+          maxWidth: "100%",
+          alignSelf: "flex-start",
         }}
       >
-        {/* Status Pill Tabs */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            background: "#F8FAFC",
-            padding: "4px 6px",
-            borderRadius: "999px",
-            border: "1px solid #E2E8F0",
-            gap: "4px",
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { id: "All", label: "All", count: counts.All },
-            { id: "Pending", label: "Action Required", count: counts.Pending },
-            { id: "InProgress", label: "In Investigation", count: counts.InProgress },
-            { id: "Completed", label: "Resolved", count: counts.Completed },
-          ].map((tab) => {
-            const isActive = filterTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setFilterTab(tab.id as LostFilterTab);
-                  setPage(1);
-                }}
-                style={{
-                  border: "none",
-                  borderRadius: "999px",
-                  padding: "7px 18px",
-                  background: isActive ? "#FFFFFF" : "transparent",
-                  color: isActive ? "#007ED5" : "#475569",
-                  fontWeight: isActive ? 700 : 500,
-                  fontSize: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  boxShadow: isActive ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none",
-                  transition: "all 0.18s ease",
-                }}
-              >
-                <span>{tab.label}</span>
-                <span
-                  style={{
-                    background: isActive ? "#EFF6FF" : "#F1F5F9",
-                    color: isActive ? "#007ED5" : "#64748B",
-                    borderRadius: "999px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    padding: "2px 8px",
-                    minWidth: "18px",
-                    textAlign: "center",
-                  }}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search & View Switcher */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <div style={{ position: "relative", minWidth: "280px" }}>
-            <Input
-              contentBefore={<SearchRegular style={{ color: "#94A3B8" }} />}
-              placeholder="Search lost incident, employee, notes..."
-              value={search}
-              onChange={(_, d) => {
-                setSearch(d.value);
+        {[
+          { id: "All", label: "All", count: counts.All },
+          { id: "Pending", label: "Action Required", count: counts.Pending },
+          { id: "InProgress", label: "In Investigation", count: counts.InProgress },
+          { id: "Completed", label: "Resolved", count: counts.Completed },
+        ].map((tab) => {
+          const isActive = filterTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setFilterTab(tab.id as LostFilterTab);
                 setPage(1);
               }}
               style={{
-                width: "100%",
-                borderRadius: "12px",
-                height: "40px",
-                background: "#FFFFFF",
-                border: "1px solid #E2E8F0",
+                border: "none",
+                borderRadius: "999px",
+                padding: "7px 18px",
+                background: isActive ? "#FFFFFF" : "transparent",
+                color: isActive ? "#007ED5" : "#475569",
+                fontWeight: isActive ? 700 : 500,
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: "pointer",
+                boxShadow: isActive ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none",
+                transition: "all 0.18s ease",
+                whiteSpace: "nowrap",
               }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
+            >
+              <span>{tab.label}</span>
+              <span
                 style={{
-                  position: "absolute",
-                  right: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  border: "none",
-                  background: "transparent",
-                  color: "#94A3B8",
-                  cursor: "pointer",
+                  background: isActive ? "#EFF6FF" : "#F1F5F9",
+                  color: isActive ? "#007ED5" : "#64748B",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  minWidth: "18px",
+                  textAlign: "center",
                 }}
               >
-                <DismissRegular style={{ fontSize: "14px" }} />
-              </button>
-            )}
-          </div>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-          {/* View Switcher: Cards vs List */}
-          <div
+      {/* Row 2: Search + View Switcher */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: "1 1 280px", minWidth: "280px" }}>
+          <Input
+            contentBefore={<SearchRegular style={{ color: "#94A3B8" }} />}
+            placeholder="Search lost incident, employee, notes..."
+            value={search}
+            onChange={(_, d) => {
+              setSearch(d.value);
+              setPage(1);
+            }}
             style={{
-              display: "flex",
-              alignItems: "center",
-              background: "#F1F5F9",
-              padding: "3px",
-              borderRadius: "10px",
+              width: "100%",
+              borderRadius: "12px",
+              height: "40px",
+              background: "#FFFFFF",
               border: "1px solid #E2E8F0",
             }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{
+                position: "absolute",
+                right: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#94A3B8",
+                cursor: "pointer",
+              }}
+            >
+              <DismissRegular style={{ fontSize: "14px" }} />
+            </button>
+          )}
+        </div>
+
+        {/* View Switcher: Cards vs List */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            background: "#F1F5F9",
+            padding: "3px",
+            borderRadius: "10px",
+            border: "1px solid #E2E8F0",
+          }}
+        >
+          <button
+            type="button"
+            title="Cards View"
+            onClick={() => setViewMode("cards")}
+            style={{
+              border: "none",
+              background: viewMode === "cards" ? "#FFFFFF" : "transparent",
+              color: viewMode === "cards" ? "#007ED5" : "#64748B",
+              borderRadius: "8px",
+              padding: "6px 10px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              boxShadow: viewMode === "cards" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              transition: "all 0.15s ease",
+            }}
           >
-            <button
-              type="button"
-              title="Cards View"
-              onClick={() => setViewMode("cards")}
-              style={{
-                border: "none",
-                background: viewMode === "cards" ? "#FFFFFF" : "transparent",
-                color: viewMode === "cards" ? "#007ED5" : "#64748B",
-                borderRadius: "8px",
-                padding: "6px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                boxShadow: viewMode === "cards" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <AppsRegular style={{ fontSize: "18px" }} />
-            </button>
-            <button
-              type="button"
-              title="List View"
-              onClick={() => setViewMode("list")}
-              style={{
-                border: "none",
-                background: viewMode === "list" ? "#FFFFFF" : "transparent",
-                color: viewMode === "list" ? "#007ED5" : "#64748B",
-                borderRadius: "8px",
-                padding: "6px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                boxShadow: viewMode === "list" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <ListRegular style={{ fontSize: "18px" }} />
-            </button>
-          </div>
+            <AppsRegular style={{ fontSize: "18px" }} />
+          </button>
+          <button
+            type="button"
+            title="List View"
+            onClick={() => setViewMode("list")}
+            style={{
+              border: "none",
+              background: viewMode === "list" ? "#FFFFFF" : "transparent",
+              color: viewMode === "list" ? "#007ED5" : "#64748B",
+              borderRadius: "8px",
+              padding: "6px 10px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              boxShadow: viewMode === "list" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <ListRegular style={{ fontSize: "18px" }} />
+          </button>
         </div>
       </div>
+    </div>
 
       {/* Body: Loading / Empty / Content */}
       {loading ? (
@@ -443,7 +439,7 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
           }}
         >
           {paged.map((r) => {
-            const isPending = r.RequestStatus === "Pending" || r.PendingItemCount > 0;
+            const isPending = r.RequestStatus === "Pending";
             const isInProgress = r.RequestStatus === "InProgress";
             const isCompleted = r.RequestStatus === "Completed";
             const isExpanded = expandedRequestId === r.ID;
@@ -516,49 +512,54 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
                       </div>
                     </div>
 
-                    {/* Status Badge Pills */}
-                    {isPending && (
-                      <span
-                        style={{
-                          background: "#FEF2F2",
-                          color: "#DC2626",
-                          borderRadius: "999px",
-                          padding: "4px 14px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Action Required
-                      </span>
-                    )}
-                    {isInProgress && (
-                      <span
-                        style={{
-                          background: "#FEF3C7",
-                          color: "#B45309",
-                          borderRadius: "999px",
-                          padding: "4px 14px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Investigation
-                      </span>
-                    )}
-                    {isCompleted && (
-                      <span
-                        style={{
-                          background: "#DCFCE7",
-                          color: "#15803D",
-                          borderRadius: "999px",
-                          padding: "4px 14px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Resolved / Replaced
-                      </span>
-                    )}
+                    {/* Status Badge Pills - Mutually Exclusive */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                      {isPending && (
+                        <span
+                          style={{
+                            background: "#FEF2F2",
+                            color: "#DC2626",
+                            borderRadius: "999px",
+                            padding: "4px 14px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Action Required
+                        </span>
+                      )}
+                      {isInProgress && (
+                        <span
+                          style={{
+                            background: "#FEF3C7",
+                            color: "#B45309",
+                            borderRadius: "999px",
+                            padding: "4px 14px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          In Investigation
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span
+                          style={{
+                            background: "#DCFCE7",
+                            color: "#15803D",
+                            borderRadius: "999px",
+                            padding: "4px 14px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Resolved / Replaced
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Metadata Row */}

@@ -13,7 +13,7 @@ import {
   Divider,
   Text,
 } from "@fluentui/react-components";
-import { Dismiss24Regular } from "@fluentui/react-icons";
+import { Dismiss24Regular, BoxToolboxRegular } from "@fluentui/react-icons";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
 import AssetFileUploadSection from "./AssetFileUploadSection";
 import { AssetCategoryRecord, AssetVendorRecord, AssetStatus, getAssetCategories, getAssetVendors } from "../Services/AssetInventoryService";
@@ -293,17 +293,50 @@ const NonITAssetFormDialog: React.FC<NonITAssetFormDialogProps> = ({
 
   return (
     <>
-      <Drawer type="overlay" separator open={open} position="end" style={{ width: "60vw" }} onOpenChange={(_, data) => onOpenChange(data.open)}>
-        <DrawerHeader>
+      <Drawer
+        type="overlay"
+        separator
+        open={open}
+        position="end"
+        style={{ width: "min(680px, 94vw)", background: "#ffffff" }}
+        onOpenChange={(_, data) => onOpenChange(data.open)}
+      >
+        <DrawerHeader style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 24px" }}>
           <DrawerHeaderTitle
             action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}
           >
-            {isEdit ? "Edit Non-IT Asset" : "Add Non-IT Asset"}
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)",
+                  color: "#D97706",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 6px rgba(217, 119, 6, 0.12)",
+                  fontSize: 20,
+                  flexShrink: 0,
+                }}
+              >
+                <BoxToolboxRegular />
+              </div>
+              <div>
+                <Text weight="semibold" style={{ color: "#0f172a", fontSize: 17, display: "block", lineHeight: "22px" }}>
+                  {isEdit ? "Edit Non-IT Asset" : "Add Non-IT Asset"}
+                </Text>
+                <div style={{ fontSize: "12.5px", color: "#64748b", marginTop: 2, fontWeight: 400 }}>
+                  Configure physical facilities, furniture, fixtures, and location details
+                </div>
+              </div>
+            </div>
           </DrawerHeaderTitle>
         </DrawerHeader>
-        <DrawerBody>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingTop: "8px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", alignItems: "start" }}>
+        <DrawerBody style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", paddingTop: "4px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", alignItems: "start" }}>
               <Field label="Asset Tag" hint={isEdit ? undefined : "Assigned automatically when you save"}>
                 <Input disabled value={isEdit && asset ? asset.AssetTag : nextTagPreview} />
               </Field>
@@ -450,7 +483,7 @@ const NonITAssetFormDialog: React.FC<NonITAssetFormDialogProps> = ({
                   <Text weight="semibold" style={{ display: "block", marginBottom: "10px" }}>
                     Category Fields
                   </Text>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", alignItems: "start" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", alignItems: "start" }}>
                     {fields.map((f) => (
                       <Field key={f.ID} label={f.FieldName}>
                         {renderFieldInput(f)}
@@ -479,11 +512,22 @@ const NonITAssetFormDialog: React.FC<NonITAssetFormDialogProps> = ({
 
             {error && <Text style={{ color: "var(--colorPaletteRedForeground1)", fontSize: "13px" }}>{error}</Text>}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={saving}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
+              <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={saving} style={{ borderRadius: "9999px", padding: "8px 22px" }}>
                 {isEdit ? "Close" : "Cancel"}
               </Button>
-              <Button appearance="primary" onClick={handleSave} disabled={saving}>
+              <Button
+                appearance="primary"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+                  borderRadius: "9999px",
+                  padding: "8px 28px",
+                  fontWeight: 600,
+                  boxShadow: "0 2px 8px rgba(0, 126, 213, 0.25)",
+                }}
+              >
                 {saving ? <Spinner size="tiny" /> : isEdit ? "Save Changes" : quantity > 1 ? `Add ${quantity} Assets` : "Add Asset"}
               </Button>
             </div>

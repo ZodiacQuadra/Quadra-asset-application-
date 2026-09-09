@@ -159,7 +159,9 @@ export const AdminUpgradeSubScreen: React.FC<AdminUpgradeSubScreenProps> = ({
             borderRadius: "999px",
             border: "1px solid #E2E8F0",
             gap: "4px",
-            flexWrap: "wrap",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            maxWidth: "100%",
           }}
         >
           {[
