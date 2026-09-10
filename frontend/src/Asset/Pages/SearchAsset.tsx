@@ -1023,9 +1023,9 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
             </Field>
           </div>
 
-          {/* Row 2: Campus / Branch, Category, Department, Status */}
+          {/* Row 2: Branch, Category, Department, Status */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
-            <Field label="Campus / Branch">
+            <Field label="Branch">
               <Dropdown
                 mountNode={mountNode}
                 value={branch}
@@ -1183,54 +1183,73 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               flexWrap: "wrap",
               gap: 12,
               paddingTop: 16,
               borderTop: "1px solid #F1F5F9",
             }}
           >
-            <Button
-              appearance="subtle"
-              icon={<ArrowResetRegular />}
+            <button
+              type="button"
               onClick={handleCancel}
-              style={{ color: "#64748B", fontWeight: 600, fontSize: 13 }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "#F8FAFC",
+                color: "#475569",
+                borderRadius: "9999px",
+                border: "1px solid #CBD5E1",
+                padding: "8px 18px",
+                fontSize: "13.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#F1F5F9";
+                e.currentTarget.style.color = "#1E293B";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#F8FAFC";
+                e.currentTarget.style.color = "#475569";
+              }}
             >
-              Reset All Filters
-            </Button>
+              <ArrowResetRegular style={{ fontSize: 16 }} />
+              <span>Reset All Filters</span>
+            </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button
-                type="button"
-                onClick={() => handleSearch()}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
-                  color: "#FFFFFF",
-                  borderRadius: "9999px",
-                  border: "none",
-                  padding: "9px 24px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "0 3px 12px rgba(0, 126, 213, 0.32)",
-                  transition: "all 0.18s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 5px 16px rgba(0, 126, 213, 0.42)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 126, 213, 0.32)";
-                }}
-              >
-                <SearchRegular style={{ fontSize: 18 }} />
-                <span>Search Assets</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleSearch()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+                color: "#FFFFFF",
+                borderRadius: "9999px",
+                border: "none",
+                padding: "9px 24px",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 3px 12px rgba(0, 126, 213, 0.32)",
+                transition: "all 0.18s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 5px 16px rgba(0, 126, 213, 0.42)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 126, 213, 0.32)";
+              }}
+            >
+              <SearchRegular style={{ fontSize: 18 }} />
+              <span>Search Assets</span>
+            </button>
           </div>
         </div>
 
@@ -1563,14 +1582,14 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                                     appearance="subtle"
                                     size="small"
                                     icon={<EyeRegular />}
-                                    onClick={() => handleView(asset)}
+                                    onClick={() => navigate(`/Asset/inventory/${asset.ID}`)}
                                     style={{
                                       color: "#007ED5",
                                       fontWeight: 600,
                                       borderRadius: "8px",
                                     }}
                                   >
-                                    View
+                                    View Details
                                   </Button>
                                 </td>
                               </tr>
@@ -2508,6 +2527,35 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                     </Text>
                   </div>
                 </div>
+
+                <div style={{ marginTop: "12px", paddingTop: "16px", borderTop: "1px solid #F1F5F9" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPanelOpen(false);
+                      navigate(`/Asset/inventory/${panelAsset.ID}`);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+                      color: "#FFFFFF",
+                      borderRadius: "10px",
+                      border: "none",
+                      padding: "11px 20px",
+                      fontSize: "13.5px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 3px 10px rgba(0, 126, 213, 0.25)",
+                    }}
+                  >
+                    <OpenRegular style={{ fontSize: 16 }} />
+                    <span>View Full Asset Details (/Asset/inventory/{panelAsset.ID})</span>
+                  </button>
+                </div>
               </div>
             ) : null}
           </DrawerBody>
@@ -2646,8 +2694,28 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                   );
                 })()}
               </DialogContent>
-              <DialogActions style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <Button appearance="secondary" onClick={() => setWarrantyModalOpen(false)}>
+              <DialogActions
+                style={{
+                  marginTop: "16px",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  width: "100%",
+                  padding: 0,
+                  boxSizing: "border-box",
+                }}
+              >
+                <Button
+                  appearance="secondary"
+                  onClick={() => setWarrantyModalOpen(false)}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    borderRadius: "10px",
+                    height: "40px",
+                    fontWeight: 600,
+                  }}
+                >
                   Close
                 </Button>
                 {selectedWarrantyAsset && (
@@ -2655,6 +2723,14 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                     appearance="primary"
                     icon={<ArrowDownloadRegular />}
                     onClick={() => handleDownloadCertificate(selectedWarrantyAsset)}
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      background: "#007ED5",
+                      borderRadius: "10px",
+                      height: "40px",
+                      fontWeight: 600,
+                    }}
                   >
                     Download Certificate
                   </Button>

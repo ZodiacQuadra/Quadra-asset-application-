@@ -471,7 +471,17 @@ function requestCollection(type) {
 // These collection-level routes must be registered before the generic
 // /:id handlers below, otherwise Express treats the descriptive path segment
 // as a request ID and returns the wrong shape to the client.
-app.get("/asset/requests/lookup/available-assets", (_req,res)=>json(res,db.prepare("SELECT id AS ID,asset_name AS AssetName,tag_id AS AssetTagID,serial_no AS SerialNo,model AS Model FROM assets WHERE status='In Stock' ORDER BY asset_name").all()));
+app.get("/asset/requests/lookup/available-assets", (req, res) => {
+  const category = (req.query.category || "").toString().trim();
+  let query = "SELECT id AS ID, asset_name AS AssetName, tag_id AS AssetTagID, serial_no AS SerialNo, model AS Model, category AS Category, location AS Location, status AS Status FROM assets WHERE status='In Stock'";
+  const params = [];
+  if (category && category !== "All" && category !== "All Categories") {
+    query += " AND (LOWER(category) LIKE LOWER(?) OR LOWER(category_id) LIKE LOWER(?))";
+    params.push(`%${category}%`, `%${category}%`);
+  }
+  query += " ORDER BY asset_name";
+  json(res, db.prepare(query).all(...params));
+});
 app.get("/asset/hr-requests/category-summary", (_req,res)=>{
   const rows=db.prepare("SELECT category, status, COUNT(*) AS n FROM requests WHERE type='HR' GROUP BY category,status").all();
   const names=[...new Set(rows.map(r=>r.category).filter(Boolean))];

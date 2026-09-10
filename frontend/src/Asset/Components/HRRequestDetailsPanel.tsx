@@ -54,19 +54,9 @@ const formatDate = (value: string | null | undefined) =>
 const formatDateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
-type HRDecisionChoice = "Allocate" | "Clarification" | "Reject" | "Complete";
+type HRDecisionChoice = "Complete" | "Clarification" | "Reject";
 
 const HR_DECISION_OPTIONS: Record<HRDecisionChoice, DecisionOptionDef> = {
-  Allocate: {
-    kind: "Allocate",
-    label: "Allocate Available Hardware",
-    description: "Assign in-stock inventory assets to pending applicant requirements",
-    icon: <LaptopRegular />,
-    accent: "#059669",
-    iconBg: "#ECFDF5",
-    activeBg: "#F0FDF4",
-    activeBorder: "#10B981",
-  },
   Complete: {
     kind: "Complete",
     label: "Finalize & Complete Requisition",
@@ -124,7 +114,7 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
   const [assigningItemId, setAssigningItemId] = useState<string | null>(null);
 
   // Decision state
-  const [selectedDecision, setSelectedDecision] = useState<HRDecisionChoice>("Allocate");
+  const [selectedDecision, setSelectedDecision] = useState<HRDecisionChoice>("Complete");
   const [clarificationReason, setClarificationReason] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
@@ -153,7 +143,7 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
 
   useEffect(() => {
     if (open && hrRequestId) {
-      setSelectedDecision("Allocate");
+      setSelectedDecision("Complete");
       setClarificationReason("");
       setRejectionReason("");
       setCompletionNotes("");
@@ -553,37 +543,57 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
                   badgeLabel="Action Required"
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {/* Option 1: Allocate */}
-                    <OptionCard
-                      def={HR_DECISION_OPTIONS.Allocate}
-                      selected={selectedDecision === "Allocate"}
-                      onClick={() => setSelectedDecision("Allocate")}
+                    {/* Fulfillment Progress Card */}
+                    <div
+                      style={{
+                        background: "#FFFFFF",
+                        border: "1px solid #E2E8F0",
+                        borderRadius: "12px",
+                        padding: "12px 14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                      }}
                     >
-                      <div
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: "8px",
-                          background: "#FFFFFF",
-                          border: "1px solid #BFDBFE",
-                          fontSize: "12px",
-                          color: "#1E40AF",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <strong>Fulfillment Progress:</strong> {fulfilledCount} of {detail.items.length} item(s) allocated.
-                        {pendingItems.length > 0 ? (
-                          <div style={{ color: "#D97706", marginTop: "4px" }}>
-                            ⏳ {pendingItems.length} requirement(s) pending hardware assignment in the left panel.
-                          </div>
-                        ) : (
-                          <div style={{ color: "#059669", marginTop: "4px" }}>
-                            ✓ All hardware requirements assigned! Ready to finalize.
-                          </div>
-                        )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "#0F172A" }}>
+                          Hardware Allocation Status
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            background: pendingItems.length === 0 ? "#DCFCE7" : "#FEF3C7",
+                            color: pendingItems.length === 0 ? "#15803D" : "#B45309",
+                          }}
+                        >
+                          {fulfilledCount} of {detail.items.length} Allocated
+                        </span>
                       </div>
-                    </OptionCard>
 
-                    {/* Option 2: Complete */}
+                      <div style={{ width: "100%", height: "6px", background: "#F1F5F9", borderRadius: "999px", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${detail.items.length > 0 ? (fulfilledCount / detail.items.length) * 100 : 0}%`,
+                            height: "100%",
+                            background: pendingItems.length === 0 ? "#10B981" : "#007ED5",
+                            borderRadius: "999px",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ fontSize: "11.5px", color: "#64748B" }}>
+                        {pendingItems.length > 0
+                          ? `Assign remaining ${pendingItems.length} requirement(s) in the left panel before finalizing.`
+                          : "All applicant equipment assigned and ready for onboarding."}
+                      </div>
+                    </div>
+
+                    {/* Option 1: Complete */}
                     <OptionCard
                       def={HR_DECISION_OPTIONS.Complete}
                       selected={selectedDecision === "Complete"}
@@ -599,10 +609,15 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
                           onChange={(_, d) => setCompletionNotes(d.value)}
                           rows={2}
                         />
+                        {pendingItems.length > 0 && (
+                          <div style={{ fontSize: "11px", color: "#D97706", marginTop: "2px" }}>
+                            Notice: {pendingItems.length} item(s) are still pending inventory allocation.
+                          </div>
+                        )}
                       </div>
                     </OptionCard>
 
-                    {/* Option 3: Clarification */}
+                    {/* Option 2: Clarification */}
                     <OptionCard
                       def={HR_DECISION_OPTIONS.Clarification}
                       selected={selectedDecision === "Clarification"}
@@ -621,7 +636,7 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
                       </div>
                     </OptionCard>
 
-                    {/* Option 4: Reject */}
+                    {/* Option 3: Reject */}
                     <OptionCard
                       def={HR_DECISION_OPTIONS.Reject}
                       selected={selectedDecision === "Reject"}

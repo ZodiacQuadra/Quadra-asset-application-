@@ -1949,7 +1949,7 @@ const AssetReports: React.FC = () => {
                 </Badge>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(215px, 1fr))", gap: "12px" }}>
                 {(overview.branchDistribution && overview.branchDistribution.length > 0 ? overview.branchDistribution : [
                   { branch: "Coimbatore", total_assets: 12, assigned_assets: 7, unassigned_assets: 3, utilization_rate: 58 },
                   { branch: "Bangalore", total_assets: 7, assigned_assets: 3, unassigned_assets: 3, utilization_rate: 43 },

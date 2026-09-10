@@ -28,6 +28,8 @@ import {
   ArrowUndoRegular,
   LaptopRegular,
   ShieldDismissRegular,
+  SearchRegular,
+  CheckmarkRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
@@ -137,6 +139,7 @@ export const LostIncidentDetailsPanel: React.FC<LostIncidentDetailsPanelProps> =
   // Decision State
   const [selectedDecision, setSelectedDecision] = useState<LostDecisionChoice>("ApproveReplacement");
   const [selectedTargetItemId, setSelectedTargetItemId] = useState<string>("");
+  const [assetSearchQuery, setAssetSearchQuery] = useState("");
   const [writeOffNotes, setWriteOffNotes] = useState("");
   const [firRequestReason, setFirRequestReason] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -293,6 +296,7 @@ export const LostIncidentDetailsPanel: React.FC<LostIncidentDetailsPanelProps> =
 
   const isSubmitDisabled =
     isSubmitting ||
+    (selectedDecision === "ApproveReplacement" && !selectedReplacement[currentTargetItem?.ID || ""]) ||
     (selectedDecision === "RequestFIR" && !firRequestReason.trim()) ||
     (selectedDecision === "Reject" && !rejectionReason.trim());
 
@@ -529,123 +533,209 @@ export const LostIncidentDetailsPanel: React.FC<LostIncidentDetailsPanelProps> =
                     def={LOST_DECISION_OPTIONS.ApproveReplacement}
                     selected={selectedDecision === "ApproveReplacement"}
                     onClick={() => setSelectedDecision("ApproveReplacement")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {items.length > 1 && (
-                        <div>
-                          <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46", display: "block", marginBottom: "4px" }}>
-                            Target Lost Asset
-                          </label>
-                          <Dropdown
-                            mountNode={mountNode}
-                            style={{ width: "100%" }}
-                            value={currentTargetItem?.AssetName ?? ""}
-                            onOptionSelect={(_, d) => {
-                              setSelectedTargetItemId(d.optionValue ?? "");
-                              const it = items.find((x) => x.ID === d.optionValue);
-                              if (it?.Category) ensureCategoryAssets(it.Category);
-                            }}
-                          >
-                            {items.map((it) => (
-                              <Option key={it.ID} value={it.ID} text={it.AssetName}>
-                                {it.AssetName} ({it.AssetTagID})
-                              </Option>
-                            ))}
-                          </Dropdown>
-                        </div>
-                      )}
-
-                      <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46", display: "block", marginBottom: "4px" }}>
-                          Choose In-Stock Replacement
-                        </label>
-                        <Dropdown
-                          placeholder="Select available inventory asset"
-                          mountNode={mountNode}
-                          style={{ width: "100%" }}
-                          value={
-                            availableAssetsByCategory[currentTargetItem?.Category || ""]?.find(
-                              (a) => a.ID === selectedReplacement[currentTargetItem?.ID || ""]
-                            )?.AssetName ?? ""
-                          }
-                          onOpenChange={(_, d) => d.open && currentTargetItem?.Category && ensureCategoryAssets(currentTargetItem.Category)}
-                          onOptionSelect={(_, d) =>
-                            currentTargetItem &&
-                            setSelectedReplacement((prev) => ({ ...prev, [currentTargetItem.ID]: d.optionValue ?? "" }))
-                          }
-                        >
-                          {(availableAssetsByCategory[currentTargetItem?.Category || ""] ?? []).length === 0 ? (
-                            <Option key="none" value="" disabled>
-                              No in-stock replacements found for {currentTargetItem?.Category}
-                            </Option>
-                          ) : (
-                            availableAssetsByCategory[currentTargetItem?.Category || ""].map((asset) => (
-                              <Option key={asset.ID} value={asset.ID} text={asset.AssetName}>
-                                {asset.AssetName} ({asset.AssetTagID})
-                              </Option>
-                            ))
-                          )}
-                        </Dropdown>
-                      </div>
-                    </div>
-                  </OptionCard>
+                  />
 
                   {/* Option 2: Approve Write Off */}
                   <OptionCard
                     def={LOST_DECISION_OPTIONS.ApproveWriteOff}
                     selected={selectedDecision === "ApproveWriteOff"}
                     onClick={() => setSelectedDecision("ApproveWriteOff")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#1D4ED8" }}>
-                        Decommission / Write-Off Justification <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
-                      </label>
-                      <Textarea
-                        placeholder="e.g. Asset tag decommissioned from active directory. User already has secondary device..."
-                        value={writeOffNotes}
-                        onChange={(_, d) => setWriteOffNotes(d.value)}
-                        rows={2}
-                      />
-                    </div>
-                  </OptionCard>
+                  />
 
                   {/* Option 3: Request FIR / Clarification */}
                   <OptionCard
                     def={LOST_DECISION_OPTIONS.RequestFIR}
                     selected={selectedDecision === "RequestFIR"}
                     onClick={() => setSelectedDecision("RequestFIR")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
-                        FIR / Document Requirements <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <Textarea
-                        placeholder="e.g. Company policy requires an official police FIR acknowledgement for laptops before replacement dispatch..."
-                        value={firRequestReason}
-                        onChange={(_, d) => setFirRequestReason(d.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </OptionCard>
+                  />
 
                   {/* Option 4: Reject */}
                   <OptionCard
                     def={LOST_DECISION_OPTIONS.Reject}
                     selected={selectedDecision === "Reject"}
                     onClick={() => setSelectedDecision("Reject")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
-                        Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <Textarea
-                        placeholder="Explain reason for rejecting this lost asset claim..."
-                        value={rejectionReason}
-                        onChange={(_, d) => setRejectionReason(d.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </OptionCard>
+                  />
+
+                  {/* Contextual Input Area */}
+                  <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {selectedDecision === "ApproveReplacement" && (
+                      <div>
+                        {items.length > 1 && (
+                          <div style={{ marginBottom: "8px" }}>
+                            <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46", display: "block", marginBottom: "4px" }}>
+                              Target Lost Asset
+                            </label>
+                            <Dropdown
+                              mountNode={mountNode}
+                              style={{ width: "100%" }}
+                              value={currentTargetItem?.AssetName ?? ""}
+                              onOptionSelect={(_, d) => {
+                                setSelectedTargetItemId(d.optionValue ?? "");
+                                const it = items.find((x) => x.ID === d.optionValue);
+                                if (it?.Category) ensureCategoryAssets(it.Category);
+                              }}
+                            >
+                              {items.map((it) => (
+                                <Option key={it.ID} value={it.ID} text={it.AssetName}>
+                                  {it.AssetName} ({it.AssetTagID})
+                                </Option>
+                              ))}
+                            </Dropdown>
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46" }}>
+                            Select In-Stock Replacement ({currentTargetItem?.Category || "Asset"}) <span style={{ color: "#DC2626" }}>*</span>
+                          </label>
+                          <span style={{ fontSize: "11px", color: "#64748B" }}>
+                            {(availableAssetsByCategory[currentTargetItem?.Category || ""] || []).length} available
+                          </span>
+                        </div>
+
+                        {/* Search bar */}
+                        <div style={{ position: "relative", marginBottom: "6px" }}>
+                          <SearchRegular style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748B", fontSize: "14px" }} />
+                          <input
+                            type="text"
+                            placeholder={`Search ${currentTargetItem?.Category || "hardware"} by tag, name, location...`}
+                            value={assetSearchQuery}
+                            onChange={(e) => setAssetSearchQuery(e.target.value)}
+                            style={{
+                              width: "100%",
+                              padding: "7px 10px 7px 30px",
+                              fontSize: "12px",
+                              border: "1px solid #CBD5E1",
+                              borderRadius: "8px",
+                              outline: "none",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+
+                        {/* List of matching available assets */}
+                        {(() => {
+                          const categoryAssets = availableAssetsByCategory[currentTargetItem?.Category || ""] || [];
+                          const filtered = categoryAssets.filter(
+                            (a) =>
+                              (a.AssetName || "").toLowerCase().includes(assetSearchQuery.toLowerCase()) ||
+                              (a.AssetTagID || "").toLowerCase().includes(assetSearchQuery.toLowerCase()) ||
+                              (a.Model || "").toLowerCase().includes(assetSearchQuery.toLowerCase()) ||
+                              (a.Location || "").toLowerCase().includes(assetSearchQuery.toLowerCase())
+                          );
+                          const currentSelectedId = selectedReplacement[currentTargetItem?.ID || ""];
+
+                          if (categoryAssets.length === 0) {
+                            return (
+                              <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "#64748B", background: "#F8FAFC", borderRadius: "8px", border: "1px dashed #CBD5E1" }}>
+                                No in-stock replacements found for {currentTargetItem?.Category || "this category"}
+                              </div>
+                            );
+                          }
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div style={{ padding: "10px", textAlign: "center", fontSize: "12px", color: "#64748B", background: "#F8FAFC", borderRadius: "8px" }}>
+                                No matching assets found for "{assetSearchQuery}"
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div style={{ maxHeight: "170px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+                              {filtered.map((asset) => {
+                                const isSelected = currentSelectedId === asset.ID;
+                                return (
+                                  <div
+                                    key={asset.ID}
+                                    onClick={() => currentTargetItem && setSelectedReplacement((prev) => ({ ...prev, [currentTargetItem.ID]: asset.ID }))}
+                                    style={{
+                                      padding: "8px 10px",
+                                      borderRadius: "8px",
+                                      border: isSelected ? "1.5px solid #007ED5" : "1px solid #E2E8F0",
+                                      background: isSelected ? "#EFF6FF" : "#FFFFFF",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "3px",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A" }}>
+                                        {asset.AssetName}
+                                      </span>
+                                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "1px 6px", borderRadius: "10px", background: "#ECFDF5", color: "#059669" }}>
+                                        In Stock
+                                      </span>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#64748B" }}>
+                                      <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#2563EB", background: "#F1F5F9", padding: "1px 5px", borderRadius: "4px" }}>
+                                        {asset.AssetTagID}
+                                      </span>
+                                      <span>•</span>
+                                      <span>{asset.Location || "Central Stock"}</span>
+                                      {asset.Model && (
+                                        <>
+                                          <span>•</span>
+                                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{asset.Model}</span>
+                                        </>
+                                      )}
+                                      {isSelected && (
+                                        <CheckmarkRegular style={{ marginLeft: "auto", color: "#007ED5", fontSize: "14px" }} />
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {selectedDecision === "ApproveWriteOff" && (
+                      <>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#1D4ED8" }}>
+                          Decommission / Write-Off Justification <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
+                        </label>
+                        <Textarea
+                          placeholder="e.g. Asset tag decommissioned from active directory. User already has secondary device..."
+                          value={writeOffNotes}
+                          onChange={(_, d) => setWriteOffNotes(d.value)}
+                          rows={3}
+                        />
+                      </>
+                    )}
+
+                    {selectedDecision === "RequestFIR" && (
+                      <>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
+                          FIR / Document Requirements <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <Textarea
+                          placeholder="e.g. Company policy requires an official police FIR acknowledgement for laptops before replacement dispatch..."
+                          value={firRequestReason}
+                          onChange={(_, d) => setFirRequestReason(d.value)}
+                          rows={3}
+                        />
+                      </>
+                    )}
+
+                    {selectedDecision === "Reject" && (
+                      <>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
+                          Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <Textarea
+                          placeholder="Explain reason for rejecting this lost asset claim..."
+                          value={rejectionReason}
+                          onChange={(_, d) => setRejectionReason(d.value)}
+                          rows={3}
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Primary Submit Button */}

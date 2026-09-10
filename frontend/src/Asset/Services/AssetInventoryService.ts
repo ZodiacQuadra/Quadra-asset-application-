@@ -1004,6 +1004,9 @@ export interface AvailableAssetOption {
   AssetTagID: string;
   SerialNo: string | null;
   Model: string | null;
+  Category?: string | null;
+  Location?: string | null;
+  Status?: string | null;
 }
 
 export interface AssetComponentSpec {

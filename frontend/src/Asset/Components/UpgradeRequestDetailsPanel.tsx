@@ -459,24 +459,33 @@ export const UpgradeRequestDetailsPanel: React.FC<UpgradeRequestDetailsPanelProp
                                 setSelected(opt.kind);
                                 setReason("");
                               }}
-                            >
-                              {(opt.kind === "Reject" || opt.kind === "Reprogress") && (
-                                <Field label={opt.kind === "Reject" ? "Justification / Rejection Reason" : "Inquiry to Custodian"} required>
-                                  <Textarea
-                                    placeholder={
-                                      opt.kind === "Reject"
-                                        ? "Provide official reason for declining hardware upgrade..."
-                                        : "Enter questions regarding specifications or workload justification..."
-                                    }
-                                    value={reason}
-                                    onChange={(_, d) => setReason(d.value)}
-                                    rows={3}
-                                  />
-                                </Field>
-                              )}
-                            </OptionCard>
+                            />
                           ))}
                         </div>
+
+                        {selected && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "2px" }}>
+                            <label style={{ fontSize: "12px", fontWeight: 600, color: "#334155" }}>
+                              {selected === "Reject"
+                                ? "Rejection Justification *"
+                                : selected === "Reprogress"
+                                ? "Specification Inquiry to Custodian *"
+                                : "Installation / Fulfillment Notes (Optional)"}
+                            </label>
+                            <Textarea
+                              placeholder={
+                                selected === "Reject"
+                                  ? "Provide official reason for declining hardware upgrade..."
+                                  : selected === "Reprogress"
+                                  ? "Enter questions regarding specifications or workload justification..."
+                                  : "e.g. Authorized upgrade. Hardware staged in local IT inventory..."
+                              }
+                              value={reason}
+                              onChange={(_, d) => setReason(d.value)}
+                              rows={selected === "Reject" || selected === "Reprogress" ? 3 : 2}
+                            />
+                          </div>
+                        )}
 
                         <Button
                           appearance="primary"

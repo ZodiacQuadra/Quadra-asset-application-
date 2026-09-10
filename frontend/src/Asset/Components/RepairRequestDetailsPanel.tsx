@@ -125,10 +125,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
 
   // Decision State
   const [selectedDecision, setSelectedDecision] = useState<RepairDecisionChoice>("Approve");
-  const [vendorNote, setVendorNote] = useState("");
-  const [unrepairableNote, setUnrepairableNote] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [reprogressReason, setReprogressReason] = useState("");
+  const [remarks, setRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Employee Reprogress State
@@ -141,10 +138,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
   useEffect(() => {
     if (open) {
       setSelectedDecision("Approve");
-      setVendorNote("");
-      setUnrepairableNote("");
-      setRejectionReason("");
-      setReprogressReason("");
+      setRemarks("");
       setPendingReprogress(null);
       setEmployeeResponse("");
     }
@@ -178,7 +172,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
             currentUser.userID,
             currentUser.displayName,
             currentUser.email,
-            vendorNote || undefined
+            remarks.trim() || undefined
           );
         }
         dispatchToast(
@@ -189,7 +183,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
         );
       } else if (selectedDecision === "Unrepairable") {
         if (onUnrepairable) {
-          onUnrepairable(unrepairableNote);
+          onUnrepairable(remarks.trim());
         } else {
           await adminActionOnRepairRequest(
             request.ID,
@@ -197,7 +191,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
             currentUser.userID,
             currentUser.displayName,
             currentUser.email,
-            unrepairableNote
+            remarks.trim()
           );
         }
         dispatchToast(
@@ -208,7 +202,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
         );
       } else if (selectedDecision === "Reject") {
         if (onReject) {
-          onReject(rejectionReason);
+          onReject(remarks.trim());
         } else {
           await adminActionOnRepairRequest(
             request.ID,
@@ -216,7 +210,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
             currentUser.userID,
             currentUser.displayName,
             currentUser.email,
-            rejectionReason
+            remarks.trim()
           );
         }
         dispatchToast(
@@ -227,11 +221,11 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
         );
       } else if (selectedDecision === "Reprogress") {
         if (onReprogress) {
-          onReprogress(reprogressReason);
+          onReprogress(remarks.trim());
         } else {
           await adminReprogressRepairRequest(
             request.ID,
-            reprogressReason,
+            remarks.trim(),
             currentUser.userID,
             currentUser.displayName,
             currentUser.email
@@ -291,9 +285,7 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
 
   const isSubmitDisabled =
     isActing ||
-    (selectedDecision === "Unrepairable" && !unrepairableNote.trim()) ||
-    (selectedDecision === "Reject" && !rejectionReason.trim()) ||
-    (selectedDecision === "Reprogress" && !reprogressReason.trim());
+    (selectedDecision !== "Approve" && !remarks.trim());
 
   const currentOptionDef = REPAIR_DECISION_OPTIONS[selectedDecision];
 
@@ -469,77 +461,68 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
                   <OptionCard
                     def={REPAIR_DECISION_OPTIONS.Approve}
                     selected={selectedDecision === "Approve"}
-                    onClick={() => setSelectedDecision("Approve")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46" }}>
-                        Service / Vendor Instructions <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
-                      </label>
-                      <Textarea
-                        placeholder="e.g. Authorized for internal workshop battery replacement..."
-                        value={vendorNote}
-                        onChange={(_, d) => setVendorNote(d.value)}
-                        rows={2}
-                      />
-                    </div>
-                  </OptionCard>
+                    onClick={() => {
+                      setSelectedDecision("Approve");
+                      setRemarks("");
+                    }}
+                  />
 
                   {/* Option 2: Mark Beyond Repair */}
                   <OptionCard
                     def={REPAIR_DECISION_OPTIONS.Unrepairable}
                     selected={selectedDecision === "Unrepairable"}
-                    onClick={() => setSelectedDecision("Unrepairable")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#6D28D9" }}>
-                        Decommissioning Rationale <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <Textarea
-                        placeholder="Detail why motherboard/screen is unfixable and replacement is needed..."
-                        value={unrepairableNote}
-                        onChange={(_, d) => setUnrepairableNote(d.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </OptionCard>
+                    onClick={() => {
+                      setSelectedDecision("Unrepairable");
+                      setRemarks("");
+                    }}
+                  />
 
                   {/* Option 3: Reject */}
                   <OptionCard
                     def={REPAIR_DECISION_OPTIONS.Reject}
                     selected={selectedDecision === "Reject"}
-                    onClick={() => setSelectedDecision("Reject")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
-                        Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <Textarea
-                        placeholder="Explain reason for rejecting this repair request..."
-                        value={rejectionReason}
-                        onChange={(_, d) => setRejectionReason(d.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </OptionCard>
+                    onClick={() => {
+                      setSelectedDecision("Reject");
+                      setRemarks("");
+                    }}
+                  />
 
                   {/* Option 4: Reprogress */}
                   <OptionCard
                     def={REPAIR_DECISION_OPTIONS.Reprogress}
                     selected={selectedDecision === "Reprogress"}
-                    onClick={() => setSelectedDecision("Reprogress")}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
-                        Information Needed from Employee <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <Textarea
-                        placeholder="e.g. Please provide photos of the physical damage or error logs..."
-                        value={reprogressReason}
-                        onChange={(_, d) => setReprogressReason(d.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </OptionCard>
+                    onClick={() => {
+                      setSelectedDecision("Reprogress");
+                      setRemarks("");
+                    }}
+                  />
+                </div>
+
+                {/* Single Contextual Remarks/Instructions Field */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#334155" }}>
+                    {selectedDecision === "Approve"
+                      ? "Service & Vendor Dispatch Instructions (Optional)"
+                      : selectedDecision === "Unrepairable"
+                      ? "Decommissioning & Scrap Justification *"
+                      : selectedDecision === "Reject"
+                      ? "Rejection Reason *"
+                      : "Diagnostic Clarification Needed from Employee *"}
+                  </label>
+                  <Textarea
+                    placeholder={
+                      selectedDecision === "Approve"
+                        ? "e.g. Authorized for workshop diagnostic, internal battery or screen repair..."
+                        : selectedDecision === "Unrepairable"
+                        ? "Detail why hardware is beyond economical repair and replacement is required..."
+                        : selectedDecision === "Reject"
+                        ? "Explain reason for rejecting this repair service request..."
+                        : "e.g. Please provide photos of the physical damage or diagnostics logs..."
+                    }
+                    value={remarks}
+                    onChange={(_, d) => setRemarks(d.value)}
+                    rows={selectedDecision === "Approve" ? 2 : 3}
+                  />
                 </div>
 
                 {/* Primary Submit Button */}

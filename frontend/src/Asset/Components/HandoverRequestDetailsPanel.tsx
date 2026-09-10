@@ -49,32 +49,22 @@ import {
 const formatDate = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
-type HandoverDecisionChoice = "AcceptAll" | "ItemByItem" | "Clarification" | "Reject";
+type HandoverDecisionChoice = "Accept" | "Clarification" | "Reject";
 
 const HANDOVER_DECISION_OPTIONS: Record<HandoverDecisionChoice, DecisionOptionDef> = {
-  AcceptAll: {
-    kind: "AcceptAll",
-    label: "Accept All & Check In",
-    description: "Mark all submitted hardware in good condition and return into active inventory stock",
+  Accept: {
+    kind: "Accept",
+    label: "Accept Custody & Check In",
+    description: "Verify returned equipment and return into active central IT inventory stock",
     icon: <CheckmarkCircleRegular />,
     accent: "#059669",
     iconBg: "#ECFDF5",
     activeBg: "#F0FDF4",
     activeBorder: "#10B981",
   },
-  ItemByItem: {
-    kind: "ItemByItem",
-    label: "Item-by-Item Review",
-    description: "Inspect each item condition individually using the table on the left",
-    icon: <DocumentCheckmarkRegular />,
-    accent: "#007ED5",
-    iconBg: "#EFF6FF",
-    activeBg: "#EFF6FF",
-    activeBorder: "#007ED5",
-  },
   Clarification: {
     kind: "Clarification",
-    label: "Request Clarification / Missing Items",
+    label: "Request Clarification from Employee",
     description: "Flag missing accessories, power bricks, or unreturned items to employee",
     icon: <ArrowUndoRegular />,
     accent: "#D97706",
@@ -115,7 +105,7 @@ const HandoverRequestDetailsPanel: React.FC<HandoverRequestDetailsPanelProps> = 
   const [loading, setLoading] = useState(false);
 
   // Decision state
-  const [selectedDecision, setSelectedDecision] = useState<HandoverDecisionChoice>("AcceptAll");
+  const [selectedDecision, setSelectedDecision] = useState<HandoverDecisionChoice>("Accept");
   const [acceptanceNotes, setAcceptanceNotes] = useState("");
   const [clarificationReason, setClarificationReason] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -141,7 +131,7 @@ const HandoverRequestDetailsPanel: React.FC<HandoverRequestDetailsPanelProps> = 
 
   useEffect(() => {
     if (open && handoverRequestId) {
-      setSelectedDecision("AcceptAll");
+      setSelectedDecision("Accept");
       setAcceptanceNotes("");
       setClarificationReason("");
       setRejectionReason("");
@@ -183,8 +173,8 @@ const HandoverRequestDetailsPanel: React.FC<HandoverRequestDetailsPanelProps> = 
     setIsSubmitting(true);
 
     try {
-      if (selectedDecision === "AcceptAll") {
-        // Bulk accept all pending items as Good Condition
+      if (selectedDecision === "Accept") {
+        // Bulk accept any remaining pending items as Good Condition
         const pendingItems = items.filter((i: any) => i.Status === "Pending");
         for (const item of pendingItems) {
           await updateAssetHandoverRequestItem(item.ID, {
@@ -199,36 +189,11 @@ const HandoverRequestDetailsPanel: React.FC<HandoverRequestDetailsPanelProps> = 
           currentUser.userID,
           currentUser.displayName,
           currentUser.email,
-          acceptanceNotes || "Handover completed and inventory updated"
+          acceptanceNotes || "Handover accepted and inventory updated"
         );
         dispatchToast(
           <Toast>
             <ToastTitle>Handover accepted! All assets returned to stock.</ToastTitle>
-          </Toast>,
-          { intent: "success" }
-        );
-      } else if (selectedDecision === "ItemByItem") {
-        if (pendingCount > 0) {
-          dispatchToast(
-            <Toast>
-              <ToastTitle>{pendingCount} item(s) still require inspection in the table</ToastTitle>
-            </Toast>,
-            { intent: "warning" }
-          );
-          setIsSubmitting(false);
-          return;
-        }
-        await adminActionOnHandoverRequest(
-          req.ID,
-          "Approve",
-          currentUser.userID,
-          currentUser.displayName,
-          currentUser.email,
-          "Individual items inspected and accepted"
-        );
-        dispatchToast(
-          <Toast>
-            <ToastTitle>Custody verification complete</ToastTitle>
           </Toast>,
           { intent: "success" }
         );
@@ -467,91 +432,71 @@ const HandoverRequestDetailsPanel: React.FC<HandoverRequestDetailsPanelProps> = 
                   badgeLabel="Action Required"
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {/* Option 1: Accept All */}
+                    {/* Option 1: Accept */}
                     <OptionCard
-                      def={HANDOVER_DECISION_OPTIONS.AcceptAll}
-                      selected={selectedDecision === "AcceptAll"}
-                      onClick={() => setSelectedDecision("AcceptAll")}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46" }}>
-                          Custody Receipt Notes <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
-                        </label>
-                        <Textarea
-                          placeholder="e.g. Received in good order at IT service desk, chargers intact..."
-                          value={acceptanceNotes}
-                          onChange={(_, d) => setAcceptanceNotes(d.value)}
-                          rows={2}
-                        />
-                      </div>
-                    </OptionCard>
+                      def={HANDOVER_DECISION_OPTIONS.Accept}
+                      selected={selectedDecision === "Accept"}
+                      onClick={() => setSelectedDecision("Accept")}
+                    />
 
-                    {/* Option 2: Item by Item */}
-                    <OptionCard
-                      def={HANDOVER_DECISION_OPTIONS.ItemByItem}
-                      selected={selectedDecision === "ItemByItem"}
-                      onClick={() => setSelectedDecision("ItemByItem")}
-                    >
-                      <div
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          background: "#FFFFFF",
-                          border: "1px solid #BFDBFE",
-                          fontSize: "12px",
-                          color: "#1E40AF",
-                        }}
-                      >
-                        <strong>Verification Progress:</strong> {acceptedCount} of {items.length} asset(s) marked.
-                        {pendingCount > 0 ? (
-                          <div style={{ color: "#D97706", marginTop: "4px" }}>
-                            ⚠ {pendingCount} item(s) still pending in the table.
-                          </div>
-                        ) : (
-                          <div style={{ color: "#059669", marginTop: "4px" }}>
-                            ✓ All items inspected and ready for finalization.
-                          </div>
-                        )}
-                      </div>
-                    </OptionCard>
-
-                    {/* Option 3: Clarification / Missing Items */}
+                    {/* Option 2: Clarification / Missing Items */}
                     <OptionCard
                       def={HANDOVER_DECISION_OPTIONS.Clarification}
                       selected={selectedDecision === "Clarification"}
                       onClick={() => setSelectedDecision("Clarification")}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
-                          Missing Item / Clarification Prompt <span style={{ color: "#DC2626" }}>*</span>
-                        </label>
-                        <Textarea
-                          placeholder="e.g. Power adapter and HDMI dongle are missing from the laptop bag..."
-                          value={clarificationReason}
-                          onChange={(_, d) => setClarificationReason(d.value)}
-                          rows={3}
-                        />
-                      </div>
-                    </OptionCard>
+                    />
 
-                    {/* Option 4: Reject */}
+                    {/* Option 3: Reject */}
                     <OptionCard
                       def={HANDOVER_DECISION_OPTIONS.Reject}
                       selected={selectedDecision === "Reject"}
                       onClick={() => setSelectedDecision("Reject")}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
-                          Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
-                        </label>
-                        <Textarea
-                          placeholder="Explain reason for rejecting this handover submission..."
-                          value={rejectionReason}
-                          onChange={(_, d) => setRejectionReason(d.value)}
-                          rows={3}
-                        />
-                      </div>
-                    </OptionCard>
+                    />
+
+                    {/* Contextual Input Area */}
+                    <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {selectedDecision === "Accept" && (
+                        <>
+                          <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46" }}>
+                            Custody Receipt Notes <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
+                          </label>
+                          <Textarea
+                            placeholder="e.g. Received in good order at IT service desk, chargers and peripherals intact..."
+                            value={acceptanceNotes}
+                            onChange={(_, d) => setAcceptanceNotes(d.value)}
+                            rows={2}
+                          />
+                        </>
+                      )}
+
+                      {selectedDecision === "Clarification" && (
+                        <>
+                          <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
+                            Missing Item / Clarification Prompt <span style={{ color: "#DC2626" }}>*</span>
+                          </label>
+                          <Textarea
+                            placeholder="e.g. Power adapter and HDMI dongle are missing from the laptop bag..."
+                            value={clarificationReason}
+                            onChange={(_, d) => setClarificationReason(d.value)}
+                            rows={3}
+                          />
+                        </>
+                      )}
+
+                      {selectedDecision === "Reject" && (
+                        <>
+                          <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
+                            Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
+                          </label>
+                          <Textarea
+                            placeholder="Explain reason for rejecting this handover submission..."
+                            value={rejectionReason}
+                            onChange={(_, d) => setRejectionReason(d.value)}
+                            rows={3}
+                          />
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Primary Submit Button */}

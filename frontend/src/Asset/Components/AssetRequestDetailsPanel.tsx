@@ -11,6 +11,7 @@ import {
   Avatar,
   Field,
   Textarea,
+  Input,
   Dropdown,
   Option,
   Spinner,
@@ -40,6 +41,7 @@ import {
   ClockRegular,
   WarningRegular,
   ClipboardTaskListLtrRegular,
+  SearchRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
@@ -196,6 +198,7 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
   const [reason, setReason] = useState("");
   const [availableAssets, setAvailableAssets] = useState<AvailableAssetOption[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [assetSearchQuery, setAssetSearchQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [reprogressHistory, setReprogressHistory] = useState<AssetRequestReprogressRecord[]>([]);
@@ -211,6 +214,7 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
     setSelected(null);
     setReason("");
     setSelectedAssetId(null);
+    setAssetSearchQuery("");
     setAvailableAssets([]);
     setEmployeeResponse("");
     setHistoryDialogType(null);
@@ -326,9 +330,10 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
   const handleSelect = async (kind: DecisionKind) => {
     setSelected(kind);
     setReason("");
+    setAssetSearchQuery("");
     if ((kind === "Approve" || kind === "Override") && request) {
       try {
-        const cat = request.AssetType || (request as any).Category || (request as any).CategoryName || "";
+        const cat = (request.AssetType || (request as any).Category || (request as any).CategoryName || (request as any).AssetTypeName || "").trim();
         const assets = await getAvailableAssetsForCategory(cat);
         setAvailableAssets(assets);
         setSelectedAssetId(null);
@@ -342,6 +347,19 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
       }
     }
   };
+
+  const filteredAvailableAssets = React.useMemo(() => {
+    if (!assetSearchQuery.trim()) return availableAssets;
+    const q = assetSearchQuery.toLowerCase().trim();
+    return availableAssets.filter(
+      (a) =>
+        a.AssetName.toLowerCase().includes(q) ||
+        a.AssetTagID.toLowerCase().includes(q) ||
+        (a.Model && a.Model.toLowerCase().includes(q)) ||
+        (a.Location && a.Location.toLowerCase().includes(q)) ||
+        (a.SerialNo && a.SerialNo.toLowerCase().includes(q))
+    );
+  }, [availableAssets, assetSearchQuery]);
 
   const reasonRequired = selected === "Reject" || selected === "Reprogress";
   const assetRequired = role === "admin" && (selected === "Approve" || selected === "Override");
@@ -975,10 +993,10 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
                               onClick={() => handleSelect(opt.kind)}
                             >
                               {role === "admin" && (opt.kind === "Approve" || opt.kind === "Override") && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                     <span style={{ fontSize: "11px", fontWeight: 700, color: "#065F46", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                                      Assign From Inventory
+                                      Assign {request.AssetType || "Hardware"} From Stock
                                     </span>
                                     <span
                                       style={{
@@ -990,38 +1008,174 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
                                         borderRadius: 999,
                                       }}
                                     >
-                                      {availableAssets.length} In Stock
+                                      {availableAssets.length} Available In Stock
                                     </span>
                                   </div>
 
-                                  <Dropdown
-                                    placeholder="Choose an available asset..."
-                                    mountNode={mountNode}
-                                    value={
-                                      availableAssets.find((a) => a.ID === selectedAssetId)
-                                        ? `${availableAssets.find((a) => a.ID === selectedAssetId)?.AssetName} (${availableAssets.find((a) => a.ID === selectedAssetId)?.AssetTagID})`
-                                        : ""
-                                    }
-                                    onOptionSelect={(_, d) => setSelectedAssetId(d.optionValue ?? null)}
-                                    style={{ width: "100%" }}
-                                  >
-                                    {availableAssets.length === 0 ? (
-                                      <Option key="none" value="" disabled>
-                                        No in-stock assets available for this category
-                                      </Option>
-                                    ) : (
-                                      availableAssets.map((asset) => (
-                                        <Option key={asset.ID} value={asset.ID} text={`${asset.AssetName} (${asset.AssetTagID})`}>
-                                          {asset.AssetName} · {asset.AssetTagID}
-                                        </Option>
-                                      ))
-                                    )}
-                                  </Dropdown>
-
-                                  {selectedAssetId && (
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11.5px", color: "#059669", fontWeight: 500 }}>
-                                      <CheckmarkCircleRegular style={{ fontSize: 14 }} />
-                                      <span>Hardware selected and ready for dispatch</span>
+                                  {selectedAssetId ? (
+                                    (() => {
+                                      const chosen = availableAssets.find((a) => a.ID === selectedAssetId);
+                                      return (
+                                        <div
+                                          style={{
+                                            background: "#FFFFFF",
+                                            border: "1.5px solid #10B981",
+                                            borderRadius: "10px",
+                                            padding: "12px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            gap: "10px",
+                                            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.12)",
+                                          }}
+                                        >
+                                          <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                              <span style={{ fontWeight: 700, fontSize: "13px", color: "#0F172A" }}>
+                                                {chosen?.AssetName || "Selected Asset"}
+                                              </span>
+                                              <span
+                                                style={{
+                                                  fontSize: "10.5px",
+                                                  fontWeight: 700,
+                                                  background: "#DCFCE7",
+                                                  color: "#15803D",
+                                                  padding: "1px 6px",
+                                                  borderRadius: "4px",
+                                                }}
+                                              >
+                                                In Stock
+                                              </span>
+                                            </div>
+                                            <div style={{ fontSize: "11.5px", color: "#64748B", marginTop: "3px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                                              <span>Tag: <strong style={{ color: "#334155" }}>{chosen?.AssetTagID}</strong></span>
+                                              {chosen?.Location && <span>Location: <strong style={{ color: "#334155" }}>{chosen.Location}</strong></span>}
+                                              {chosen?.Model && <span>Model: <strong style={{ color: "#334155" }}>{chosen.Model}</strong></span>}
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedAssetId(null);
+                                            }}
+                                            style={{
+                                              background: "#F1F5F9",
+                                              border: "1px solid #CBD5E1",
+                                              borderRadius: "6px",
+                                              padding: "4px 10px",
+                                              fontSize: "11.5px",
+                                              fontWeight: 600,
+                                              color: "#475569",
+                                              cursor: "pointer",
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            Change
+                                          </button>
+                                        </div>
+                                      );
+                                    })()
+                                  ) : availableAssets.length === 0 ? (
+                                    <div
+                                      style={{
+                                        padding: "12px",
+                                        borderRadius: "8px",
+                                        background: "#FEF2F2",
+                                        border: "1px solid #FECACA",
+                                        color: "#B91C1C",
+                                        fontSize: "12px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                      }}
+                                    >
+                                      <WarningRegular style={{ fontSize: "16px", flexShrink: 0 }} />
+                                      <span>
+                                        No in-stock <strong>{request.AssetType || "hardware"}</strong> assets are currently available in inventory. Incompatible hardware cannot be allocated.
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                      <Input
+                                        placeholder={`Search available ${request.AssetType || "assets"} by name, tag, location...`}
+                                        contentBefore={<SearchRegular style={{ color: "#94A3B8" }} />}
+                                        value={assetSearchQuery}
+                                        onChange={(_, d) => setAssetSearchQuery(d.value)}
+                                        style={{ width: "100%", borderRadius: "8px" }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      <div
+                                        style={{
+                                          maxHeight: "160px",
+                                          overflowY: "auto",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "6px",
+                                          padding: "4px",
+                                          background: "#F8FAFC",
+                                          borderRadius: "8px",
+                                          border: "1px solid #E2E8F0",
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {filteredAvailableAssets.length === 0 ? (
+                                          <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "#64748B" }}>
+                                            No assets match "{assetSearchQuery}"
+                                          </div>
+                                        ) : (
+                                          filteredAvailableAssets.map((asset) => (
+                                            <div
+                                              key={asset.ID}
+                                              onClick={() => setSelectedAssetId(asset.ID)}
+                                              style={{
+                                                background: "#FFFFFF",
+                                                border: "1px solid #E2E8F0",
+                                                borderRadius: "8px",
+                                                padding: "8px 10px",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                gap: "8px",
+                                                transition: "all 0.15s ease",
+                                              }}
+                                              onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = "#007ED5";
+                                                e.currentTarget.style.background = "#F0F9FF";
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = "#E2E8F0";
+                                                e.currentTarget.style.background = "#FFFFFF";
+                                              }}
+                                            >
+                                              <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ fontWeight: 600, fontSize: "12.5px", color: "#0F172A" }}>
+                                                  {asset.AssetName}
+                                                </div>
+                                                <div style={{ fontSize: "11px", color: "#64748B", marginTop: "1px" }}>
+                                                  <span style={{ fontWeight: 600, color: "#334155" }}>{asset.AssetTagID}</span>
+                                                  {asset.Location ? ` · ${asset.Location}` : ""}
+                                                  {asset.Model ? ` · ${asset.Model}` : ""}
+                                                </div>
+                                              </div>
+                                              <span
+                                                style={{
+                                                  fontSize: "10.5px",
+                                                  fontWeight: 700,
+                                                  background: "#DCFCE7",
+                                                  color: "#15803D",
+                                                  padding: "2px 7px",
+                                                  borderRadius: "4px",
+                                                  flexShrink: 0,
+                                                }}
+                                              >
+                                                In Stock
+                                              </span>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
