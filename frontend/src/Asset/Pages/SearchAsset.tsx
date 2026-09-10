@@ -22,6 +22,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from "@fluentui/react-components";
 import {
   ListRegular,
@@ -31,6 +36,7 @@ import {
   DismissRegular,
   ChevronLeftRegular,
   ChevronRightFilled,
+  ChevronDownRegular,
   CalendarRegular,
   FilterRegular,
   TagRegular,
@@ -73,6 +79,137 @@ import { getEntraDepartments, EntraDepartment } from "../../Services/Department"
 import { getAllEntraUsers, EntraADUser } from "../../Services/EntraADUserService";
 import { getCategoryIcon } from "../Utils/categoryIcon";
 import { CANONICAL_BRANCHES, normalizeBranch } from "../../Common/EnterpriseConstants";
+
+interface EnterpriseFilterDropdownProps {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  displayValue?: string;
+  options: { value: string; label: string }[];
+  onChange: (val: string) => void;
+  isDefault?: (val: string) => boolean;
+}
+
+const EnterpriseFilterDropdown: React.FC<EnterpriseFilterDropdownProps> = ({
+  label,
+  icon,
+  value,
+  displayValue,
+  options,
+  onChange,
+  isDefault = (v) =>
+    !v ||
+    v === "All Branches" ||
+    v === "All Categories" ||
+    v === "All Departments" ||
+    v === "Any Status" ||
+    v === "Any Vendor" ||
+    v === "..." ||
+    v.startsWith("All") ||
+    v.startsWith("Any"),
+}) => {
+  const isSelected = !isDefault(value);
+  const currentLabel = displayValue || options.find((o) => o.value === value)?.label || value;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: isSelected ? "#007ED5" : "#475569",
+          marginBottom: "6px",
+        }}
+      >
+        {icon}
+        <span>{label}</span>
+      </label>
+
+      <Menu>
+        <MenuTrigger disableButtonEnhancement>
+          <button
+            type="button"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              height: "40px",
+              padding: "0 12px",
+              background: isSelected ? "#F0F7FF" : "#FFFFFF",
+              border: `1px solid ${isSelected ? "#007ED5" : "#CBD5E1"}`,
+              borderRadius: "10px",
+              fontSize: "13px",
+              fontWeight: isSelected ? 600 : 500,
+              color: isSelected ? "#007ED5" : "#0F172A",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              boxShadow: isSelected ? "0 0 0 1px #007ED5" : "none",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+            onMouseEnter={(e) => {
+              if (!isSelected) e.currentTarget.style.borderColor = "#94A3B8";
+            }}
+            onMouseLeave={(e) => {
+              if (!isSelected) e.currentTarget.style.borderColor = "#CBD5E1";
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                marginRight: "8px",
+                textAlign: "left",
+              }}
+            >
+              {currentLabel}
+            </span>
+            <ChevronDownRegular
+              style={{
+                fontSize: "13px",
+                color: isSelected ? "#007ED5" : "#64748B",
+                flexShrink: 0,
+                opacity: 0.8,
+              }}
+            />
+          </button>
+        </MenuTrigger>
+        <MenuPopover style={{ borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", border: "1px solid #E2E8F0" }}>
+          <MenuList style={{ maxHeight: "280px", overflowY: "auto", minWidth: "210px", padding: "4px" }}>
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <MenuItem
+                  key={opt.value}
+                  onClick={() => onChange(opt.value)}
+                  style={{
+                    borderRadius: "6px",
+                    fontWeight: active ? 600 : 400,
+                    color: active ? "#007ED5" : "#1E293B",
+                    background: active ? "#EFF6FF" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    fontSize: "13px",
+                  }}
+                >
+                  <span>{opt.label}</span>
+                  {active && <CheckmarkRegular style={{ fontSize: "14px", color: "#007ED5", marginLeft: "8px" }} />}
+                </MenuItem>
+              );
+            })}
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+    </div>
+  );
+};
 
 const SearchAssets: React.FC = () => {
   const { mountNode, portal } = useThemedMountNode();
@@ -981,201 +1118,265 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
 
           {/* Row 1: Keyword Input */}
           <div style={{ width: "100%" }}>
-            <Field label="Keyword Search" style={{ width: "100%" }}>
-              <div
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: keyword.trim() ? "#007ED5" : "#475569",
+                marginBottom: "6px",
+              }}
+            >
+              <SearchRegular style={{ fontSize: "14px", color: keyword.trim() ? "#007ED5" : "#64748B" }} />
+              <span>Keyword Search</span>
+            </label>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: keyword.trim() ? "#F0F7FF" : "#FFFFFF",
+                border: `1px solid ${keyword.trim() ? "#007ED5" : "#CBD5E1"}`,
+                borderRadius: 10,
+                padding: "0 14px",
+                height: 40,
+                boxSizing: "border-box",
+                boxShadow: keyword.trim() ? "0 0 0 1px #007ED5" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <SearchRegular style={{ color: keyword.trim() ? "#007ED5" : "#64748B", fontSize: 16 }} />
+              <input
+                type="text"
+                placeholder="Search by asset tag (e.g. AST00023), name, serial number, model..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  background: "#F8FAFC",
-                  border: "1px solid #CBD5E1",
-                  borderRadius: 10,
-                  padding: "0 14px",
-                  height: 42,
-                  boxSizing: "border-box",
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  width: "100%",
+                  fontSize: 13.5,
+                  color: "#0F172A",
+                  fontWeight: 500,
                 }}
-              >
-                <SearchRegular style={{ color: "#64748B", fontSize: 18 }} />
-                <input
-                  type="text"
-                  placeholder="Search by asset tag (e.g. AST00023), name, serial number, model..."
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    background: "transparent",
-                    width: "100%",
-                    fontSize: 13.5,
-                    color: "#0F172A",
-                  }}
-                />
-                {keyword && (
-                  <button
-                    onClick={() => setKeyword("")}
-                    style={{ border: "none", background: "transparent", color: "#94A3B8", cursor: "pointer", fontSize: 16 }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            </Field>
+              />
+              {keyword && (
+                <button
+                  onClick={() => setKeyword("")}
+                  style={{ border: "none", background: "transparent", color: "#94A3B8", cursor: "pointer", fontSize: 16 }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Row 2: Branch, Category, Department, Status */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
-            <Field label="Branch">
-              <Dropdown
-                mountNode={mountNode}
-                value={branch}
-                selectedOptions={[branch]}
-                onOptionSelect={(_, d) => setBranch(d.optionValue || "All Branches")}
-              >
-                <Option value="All Branches">All Branches</Option>
-                {CANONICAL_BRANCHES.map((b) => (
-                  <Option key={b} value={b}>
-                    {b}
-                  </Option>
-                ))}
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Branch"
+              icon={<BuildingRegular style={{ fontSize: 14, color: branch !== "All Branches" ? "#007ED5" : "#64748B" }} />}
+              value={branch}
+              options={[
+                { value: "All Branches", label: "All Branches" },
+                ...CANONICAL_BRANCHES.map((b) => ({ value: b, label: b })),
+              ]}
+              onChange={(val) => setBranch(val)}
+              isDefault={(v) => v === "All Branches"}
+            />
 
-            <Field label="Category">
-              <Dropdown
-                mountNode={mountNode}
-                value={category}
-                selectedOptions={[category]}
-                onOptionSelect={(_, d) => setCategory(d.optionValue || "All Categories")}
-              >
-                <Option value="All Categories">All Categories</Option>
-                {categories.map((c) => (
-                  <Option key={c.ID} value={c.CategoryName ?? ""}>
-                    {c.CategoryName}
-                  </Option>
-                ))}
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Category"
+              icon={<TagRegular style={{ fontSize: 14, color: category !== "All Categories" ? "#007ED5" : "#64748B" }} />}
+              value={category}
+              options={[
+                { value: "All Categories", label: "All Categories" },
+                ...categories.map((c) => ({ value: c.CategoryName ?? "", label: c.CategoryName ?? "" })),
+              ]}
+              onChange={(val) => setCategory(val)}
+              isDefault={(v) => v === "All Categories"}
+            />
 
-            <Field label="Department">
-              <Dropdown
-                mountNode={mountNode}
-                value={department}
-                selectedOptions={[department]}
-                onOptionSelect={(_, d) => setDepartment(d.optionValue || "All Departments")}
-              >
-                <Option value="All Departments">All Departments</Option>
-                {departments.map((d) => (
-                  <Option key={d.Id} value={d.Name}>
-                    {d.Name}
-                  </Option>
-                ))}
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Department"
+              icon={<PeopleRegular style={{ fontSize: 14, color: department !== "All Departments" ? "#007ED5" : "#64748B" }} />}
+              value={department}
+              options={[
+                { value: "All Departments", label: "All Departments" },
+                ...departments.map((d) => ({ value: d.Name, label: d.Name })),
+              ]}
+              onChange={(val) => setDepartment(val)}
+              isDefault={(v) => v === "All Departments"}
+            />
 
-            <Field label="Asset Status">
-              <Dropdown
-                mountNode={mountNode}
-                value={status}
-                selectedOptions={[status]}
-                onOptionSelect={(_, d) => setStatus(d.optionValue || "Any Status")}
-              >
-                <Option value="Any Status">Any Status</Option>
-                <Option value="In Stock">In Stock</Option>
-                <Option value="Assigned">In Use / Assigned</Option>
-                <Option value="Under Maintenance">Under Maintenance</Option>
-                <Option value="End of Use">End of Use</Option>
-                <Option value="Reserved">Reserved</Option>
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Asset Status"
+              icon={<CheckmarkCircleRegular style={{ fontSize: 14, color: status !== "Any Status" ? "#007ED5" : "#64748B" }} />}
+              value={status}
+              options={[
+                { value: "Any Status", label: "Any Status" },
+                { value: "In Stock", label: "In Stock" },
+                { value: "Assigned", label: "In Use / Assigned" },
+                { value: "Under Maintenance", label: "Under Maintenance" },
+                { value: "End of Use", label: "End of Use" },
+                { value: "Reserved", label: "Reserved" },
+              ]}
+              onChange={(val) => setStatus(val)}
+              isDefault={(v) => v === "Any Status"}
+            />
           </div>
 
           {/* Row 3: Assigned Person, Vendor, Date Range, Group By */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
-            <Field label="Assigned Person">
-              <Combobox
-                placeholder="Search employee... (optional)"
-                value={personQuery}
-                onChange={(e) => setPersonQuery(e.target.value)}
-                open={personIsOpen}
-                onOpenChange={(_, data) => setPersonIsOpen(data.open)}
-                mountNode={mountNode}
-                onOptionSelect={(_, data) => {
-                  const u = personResults.find((x) => x.ID === data.optionValue);
-                  if (u) {
-                    setPerson(u.DisplayName);
-                    setPersonQuery(u.DisplayName);
-                    setSelectedPersonId(u.ID);
-                    setPersonIsOpen(false);
-                  }
+            {/* Assigned Person with custom enterprise styling */}
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: selectedPersonId || (person && person !== "Any Person") ? "#007ED5" : "#475569",
+                  }}
+                >
+                  <PersonRegular style={{ fontSize: "14px", color: selectedPersonId || (person && person !== "Any Person") ? "#007ED5" : "#64748B" }} />
+                  <span>Assigned Person</span>
+                </label>
+                {(selectedPersonId || (person && person !== "Any Person") || personQuery) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPerson("Any Person");
+                      setPersonQuery("");
+                      setSelectedPersonId(null);
+                    }}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#007ED5",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              <div
+                style={{
+                  height: "40px",
+                  borderRadius: "10px",
+                  border: `1px solid ${selectedPersonId || (person && person !== "Any Person") ? "#007ED5" : "#CBD5E1"}`,
+                  background: selectedPersonId || (person && person !== "Any Person") ? "#F0F7FF" : "#FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 8px",
+                  boxSizing: "border-box",
+                  transition: "all 0.15s ease",
+                  boxShadow: selectedPersonId || (person && person !== "Any Person") ? "0 0 0 1px #007ED5" : "none",
                 }}
               >
-                {personLoading ? (
-                  <Option key="loading" value="" disabled text="Searching...">
-                    Searching...
-                  </Option>
-                ) : personResults.length === 0 ? (
-                  <Option key="empty" value="" disabled text="No results">
-                    {personQuery.length < 2 ? "Type name to search" : "No users found"}
-                  </Option>
-                ) : (
-                  personResults.map((u) => (
-                    <Option key={u.ID} value={u.ID} text={u.DisplayName}>
-                      <Persona name={u.DisplayName} secondaryText={u.Mail} />
+                <Combobox
+                  placeholder="Search employee... (optional)"
+                  value={personQuery}
+                  onChange={(e) => setPersonQuery(e.target.value)}
+                  open={personIsOpen}
+                  onOpenChange={(_, data) => setPersonIsOpen(data.open)}
+                  mountNode={mountNode}
+                  style={{ width: "100%", minWidth: 0, border: "none", background: "transparent" }}
+                  onOptionSelect={(_, data) => {
+                    const u = personResults.find((x) => x.ID === data.optionValue);
+                    if (u) {
+                      setPerson(u.DisplayName);
+                      setPersonQuery(u.DisplayName);
+                      setSelectedPersonId(u.ID);
+                      setPersonIsOpen(false);
+                    }
+                  }}
+                >
+                  {personLoading ? (
+                    <Option key="loading" value="" disabled text="Searching...">
+                      Searching...
                     </Option>
-                  ))
-                )}
-              </Combobox>
-            </Field>
+                  ) : personResults.length === 0 ? (
+                    <Option key="empty" value="" disabled text="No results">
+                      {personQuery.length < 2 ? "Type name to search" : "No users found"}
+                    </Option>
+                  ) : (
+                    personResults.map((u) => (
+                      <Option key={u.ID} value={u.ID} text={u.DisplayName}>
+                        <Persona name={u.DisplayName} secondaryText={u.Mail} />
+                      </Option>
+                    ))
+                  )}
+                </Combobox>
+              </div>
+            </div>
 
-            <Field label="Vendor / Supplier">
-              <Dropdown
-                mountNode={mountNode}
-                value={vendor === "Any Vendor" ? "Any Vendor" : vendors.find((v) => v.ID === vendor)?.VendorName || vendor}
-                selectedOptions={[vendor]}
-                onOptionSelect={(_, d) => setVendor(d.optionValue || "Any Vendor")}
-              >
-                <Option value="Any Vendor">Any Vendor</Option>
-                {vendors.map((v) => (
-                  <Option key={v.ID} value={v.ID}>
-                    {v.VendorName}
-                  </Option>
-                ))}
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Vendor / Supplier"
+              icon={<BuildingShopRegular style={{ fontSize: 14, color: vendor !== "Any Vendor" ? "#007ED5" : "#64748B" }} />}
+              value={vendor}
+              displayValue={vendor === "Any Vendor" ? "Any Vendor" : vendors.find((v) => v.ID === vendor)?.VendorName || vendor}
+              options={[
+                { value: "Any Vendor", label: "Any Vendor" },
+                ...vendors.map((v) => ({ value: v.ID, label: v.VendorName })),
+              ]}
+              onChange={(val) => setVendor(val)}
+              isDefault={(v) => v === "Any Vendor"}
+            />
 
-            <Field label="Date Range">
-              <Dropdown
-                mountNode={mountNode}
-                value={quickDateRange === "..." ? "Any Date Range" : quickDateRange}
-                selectedOptions={[quickDateRange]}
-                onOptionSelect={(_, d) => setQuickDateRange(d.optionValue || "...")}
-              >
-                <Option value="...">Any Date Range</Option>
-                <Option value="Current Month">Current Month</Option>
-                <Option value="Previous Month">Previous Month</Option>
-                <Option value="Current Quarter">Current Quarter</Option>
-                <Option value="Current Year">Current Year</Option>
-                <Option value="Year 2025">Year 2025</Option>
-                <Option value="Year 2024">Year 2024</Option>
-                <Option value="Year 2023">Year 2023</Option>
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Date Range"
+              icon={<CalendarRegular style={{ fontSize: 14, color: quickDateRange !== "..." ? "#007ED5" : "#64748B" }} />}
+              value={quickDateRange}
+              displayValue={quickDateRange === "..." ? "Any Date Range" : quickDateRange}
+              options={[
+                { value: "...", label: "Any Date Range" },
+                { value: "Current Month", label: "Current Month" },
+                { value: "Previous Month", label: "Previous Month" },
+                { value: "Current Quarter", label: "Current Quarter" },
+                { value: "Current Year", label: "Current Year" },
+                { value: "Year 2025", label: "Year 2025" },
+                { value: "Year 2024", label: "Year 2024" },
+                { value: "Year 2023", label: "Year 2023" },
+              ]}
+              onChange={(val) => setQuickDateRange(val)}
+              isDefault={(v) => v === "..."}
+            />
 
-            <Field label="Group Results By">
-              <Dropdown
-                mountNode={mountNode}
-                value={groupedBy === "..." ? "None (Flat List)" : groupedBy}
-                selectedOptions={[groupedBy]}
-                onOptionSelect={(_, d) => setGroupedBy(d.optionValue || "...")}
-              >
-                <Option value="...">None (Flat List)</Option>
-                <Option value="Category">Category</Option>
-                <Option value="Department">Department</Option>
-                <Option value="Assigned to">Assigned Custodian</Option>
-                <Option value="Site + Location">Branch + Location</Option>
-              </Dropdown>
-            </Field>
+            <EnterpriseFilterDropdown
+              label="Group Results By"
+              icon={<DocumentBulletListRegular style={{ fontSize: 14, color: groupedBy !== "..." ? "#007ED5" : "#64748B" }} />}
+              value={groupedBy}
+              displayValue={
+                groupedBy === "..."
+                  ? "None (Flat List)"
+                  : groupedBy === "Assigned to"
+                  ? "Assigned Custodian"
+                  : groupedBy === "Site + Location"
+                  ? "Branch + Location"
+                  : groupedBy
+              }
+              options={[
+                { value: "...", label: "None (Flat List)" },
+                { value: "Category", label: "Category" },
+                { value: "Department", label: "Department" },
+                { value: "Assigned to", label: "Assigned Custodian" },
+                { value: "Site + Location", label: "Branch + Location" },
+              ]}
+              onChange={(val) => setGroupedBy(val)}
+              isDefault={(v) => v === "..."}
+            />
           </div>
 
           {/* Action Row */}

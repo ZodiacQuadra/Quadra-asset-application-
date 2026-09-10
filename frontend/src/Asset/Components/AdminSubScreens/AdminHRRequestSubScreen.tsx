@@ -118,50 +118,6 @@ export const AdminHRRequestSubScreen: React.FC<AdminHRRequestSubScreenProps> = (
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* Category Summary Chips (Optional preview of category counts requested) */}
-      {!categorySummaryLoading && categorySummary.length > 0 && (
-        <div
-          style={{
-            background: "#FFFFFF",
-            borderRadius: "16px",
-            padding: "16px 20px",
-            border: "1px solid #E2E8F0",
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            flexWrap: "wrap",
-          }}
-        >
-          <Text size={200} weight="semibold" style={{ color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Requisition Breakdown:
-          </Text>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {categorySummary.map((c) => (
-              <span
-                key={c.CategoryName}
-                style={{
-                  background: "#F8FAFC",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: "999px",
-                  padding: "4px 12px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "#1E293B",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span>{c.CategoryName}:</span>
-                <span style={{ color: "#007ED5" }}>{c.TotalCount}</span>
-                {c.PendingCount > 0 && (
-                  <span style={{ color: "#D97706", fontSize: "11px" }}>({c.PendingCount} pend)</span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Toolbar replicating Employee Request sub-screen */}
       <div
