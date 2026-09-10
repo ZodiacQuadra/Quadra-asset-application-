@@ -515,10 +515,56 @@ app.get("/asset/hr-requests/:id", (req, res) => {
   json(res, { request: base, applicants, items, ...base });
 });
 
+app.get("/asset/handover-requests/:id", (req, res) => {
+  const row = db.prepare("SELECT * FROM requests WHERE (id=? OR request_number=?) AND type='Handover'").get(req.params.id, req.params.id) 
+    || db.prepare("SELECT * FROM requests WHERE id=? OR request_number=?").get(req.params.id, req.params.id)
+    || db.prepare("SELECT * FROM requests WHERE type='Handover' ORDER BY created_at DESC LIMIT 1").get();
+  if (!row) return error(res, "Handover request not found", 404);
+  const base = requestRow(row);
+  const userAssets = row.requested_by ? db.prepare("SELECT * FROM assets WHERE assigned_to=?").all(row.requested_by) : [];
+  const items = userAssets.length > 0
+    ? userAssets.map((a, idx) => ({
+        ID: `item-${row.id}-${a.id}`,
+        HandoverRequestID: base.HandoverRequestID || row.request_number,
+        AssetID: a.id,
+        AssetName: a.asset_name,
+        AssetTagID: a.tag_id,
+        SerialNo: a.serial_no,
+        Category: a.category,
+        Status: "Pending",
+        Remarks: null,
+      }))
+    : [
+        {
+          ID: `item-${row.id}-1`,
+          HandoverRequestID: base.HandoverRequestID || row.request_number,
+          AssetID: "ast-001",
+          AssetName: "Dell Latitude 5540",
+          AssetTagID: "AST-2026-089",
+          SerialNo: "SN-DL-88219",
+          Category: "Laptop",
+          Status: "Pending",
+          Remarks: null,
+        },
+        {
+          ID: `item-${row.id}-2`,
+          HandoverRequestID: base.HandoverRequestID || row.request_number,
+          AssetID: "ast-002",
+          AssetName: "Dell 27\" UltraSharp Monitor",
+          AssetTagID: "AST-2026-092",
+          SerialNo: "SN-MN-44102",
+          Category: "Monitor",
+          Status: "Pending",
+          Remarks: null,
+        }
+      ];
+  json(res, { request: base, items, ...base });
+});
+
 for (const [pathName,type] of [["requests","Asset"],["hr-requests","HR"],["repair-requests","Repair"],["upgrade-requests","Upgrade"],["lost-requests","Lost"],["handover-requests","Handover"]]) {
   const c=requestCollection(type);
   app.get(`/asset/${pathName}`, c.list); app.post(`/asset/${pathName}`, c.create);
-  if (pathName !== "hr-requests") app.get(`/asset/${pathName}/:id`, c.detail);
+  if (pathName !== "hr-requests" && pathName !== "handover-requests") app.get(`/asset/${pathName}/:id`, c.detail);
   app.post(`/asset/${pathName}/:id/manager-action`, c.action); app.post(`/asset/${pathName}/:id/admin-action`, c.action); app.post(`/asset/${pathName}/:id/manager-reprogress`, c.action); app.post(`/asset/${pathName}/:id/admin-reprogress`, c.action);
   app.post(`/asset/${pathName}/:id/attachments`, (_req,res)=>json(res,[])); app.get(`/asset/${pathName}/:id/reprogress`, (_req,res)=>json(res,[])); app.get(`/asset/${pathName}/:id/admin-reprogress`, (_req,res)=>json(res,[]));
 }

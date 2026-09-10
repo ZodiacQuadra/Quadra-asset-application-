@@ -78,6 +78,7 @@ const HR_STATUS_COLOR: Record<HRRequestStatus, "warning" | "informative" | "succ
   InProgress: "informative",
   Completed: "success",
   Rejected: "danger",
+  Draft: "informative",
 };
 
 type RequestType = "select" | "employee" | "repair" | "hr" | "hardware" | "handover" | "lost";
@@ -718,7 +719,7 @@ const AdminApproval: React.FC = () => {
       }
       case "hardware": {
         const total = upgradeRequests.length;
-        const pending = upgradeRequests.filter((r) => r.AdminApprovalStatus === "Pending" || r.OverallStatus === "PendingAdminApproval").length;
+        const pending = upgradeRequests.filter((r) => r.AdminApprovalStatus === "Pending" || r.OverallStatus === "AdminApprovalPending" || r.ReqStatus === "AdminApprovalPending").length;
         const approved = upgradeRequests.filter((r) => r.AdminApprovalStatus === "Approved" || r.OverallStatus === "Completed").length;
         const rejected = upgradeRequests.filter((r) => r.AdminApprovalStatus === "Rejected").length;
         return { total, pending, approved, rejected, pendingLabel: "Pending Admin", approvedLabel: "Approved / Complete", rejectedLabel: "Rejected" };
@@ -1560,6 +1561,7 @@ const AdminApproval: React.FC = () => {
                   return (
                     <div
                       key={request.ID}
+                      onClick={() => setDetailsRequest(request)}
                       style={{
                         background: "#FFFFFF",
                         borderRadius: "16px",
@@ -1571,6 +1573,15 @@ const AdminApproval: React.FC = () => {
                         flexDirection: "column",
                         justifyContent: "space-between",
                         transition: "all 0.2s ease",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.08)";
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.04)";
+                        e.currentTarget.style.transform = "translateY(0)";
                       }}
                     >
                       <div>
@@ -1704,25 +1715,31 @@ const AdminApproval: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Reason / Purpose */}
+                        {/* Purpose Container */}
                         <div
                           style={{
-                            fontSize: "14px",
-                            color: "#334155",
-                            lineHeight: 1.45,
-                            minHeight: "36px",
-                            marginBottom: "16px",
+                            color: "#475569",
+                            fontSize: "13.5px",
+                            lineHeight: "1.5",
+                            marginBottom: "18px",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
                           }}
                         >
-                          {request.PurposeOfRequest}
+                          {request.PurposeOfRequest || "Standard hardware requisition"}
                         </div>
                       </div>
 
-                      <div>
-                        {/* Divider */}
-                        <div style={{ borderTop: "1px solid #F1F5F9", marginBottom: "14px" }} />
-
-                        {/* Bottom Action Section */}
+                      {/* Bottom Section */}
+                      <div
+                        style={{
+                          borderTop: "1px solid #F1F5F9",
+                          paddingTop: "14px",
+                          marginTop: "auto",
+                        }}
+                      >
                         {isAwaitingManager && (
                           <div>
                             <div
@@ -1772,7 +1789,8 @@ const AdminApproval: React.FC = () => {
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     dispatchToast(
                                       <Toast>
                                         <ToastTitle>
@@ -1785,7 +1803,7 @@ const AdminApproval: React.FC = () => {
                                   style={{
                                     background: "#FFFFFF",
                                     border: "1px solid #CBD5E1",
-                                    borderRadius: "8px",
+                                    borderRadius: "25px",
                                     padding: "7px 16px",
                                     fontSize: "13px",
                                     fontWeight: 600,
@@ -1800,14 +1818,15 @@ const AdminApproval: React.FC = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setDetailsDecision("Approve");
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDetailsDecision("Override");
                                     setDetailsRequest(request);
                                   }}
                                   style={{
                                     background: "#15803D",
                                     border: "none",
-                                    borderRadius: "8px",
+                                    borderRadius: "25px",
                                     padding: "7px 16px",
                                     fontSize: "13px",
                                     fontWeight: 600,
@@ -1856,7 +1875,8 @@ const AdminApproval: React.FC = () => {
                               <div>
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setDetailsDecision("Approve");
                                     setDetailsRequest(request);
                                   }}
@@ -1913,7 +1933,10 @@ const AdminApproval: React.FC = () => {
                               <div>
                                 <button
                                   type="button"
-                                  onClick={() => setDetailsRequest(request)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDetailsRequest(request);
+                                  }}
                                   style={{
                                     background: "#FFFFFF",
                                     border: "1px solid #CBD5E1",
@@ -2067,8 +2090,8 @@ const AdminApproval: React.FC = () => {
                                 appearance={isReady ? "primary" : "subtle"}
                                 style={
                                   isReady
-                                    ? { background: "#007ED5", borderColor: "#007ED5", borderRadius: "6px" }
-                                    : { color: "#007ED5", borderRadius: "6px" }
+                                    ? { background: "#007ED5", borderColor: "#007ED5", borderRadius: "25px" }
+                                    : { color: "#007ED5", borderRadius: "25px" }
                                 }
                                 onClick={() => {
                                   if (isReady) setDetailsDecision("Approve");
@@ -2191,6 +2214,10 @@ const AdminApproval: React.FC = () => {
         onOpenChange={(isOpen) => !isOpen && setSelectedRepairRequest(null)}
         request={selectedRepairRequest}
         role="admin"
+        onActionComplete={() => {
+          loadRepairRequests();
+          setSelectedRepairRequest(null);
+        }}
         onRespondComplete={() => {
           loadRepairRequests();
           setSelectedRepairRequest(null);

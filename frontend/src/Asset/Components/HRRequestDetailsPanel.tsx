@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Drawer,
   DrawerHeader,
@@ -8,40 +7,97 @@ import {
   Button,
   Text,
   Badge,
-  Divider,
   Spinner,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
   Dropdown,
   Option,
+  Textarea,
   Toast,
   ToastTitle,
   Toaster,
   useToastController,
   useId,
 } from "@fluentui/react-components";
-import { Dismiss24Regular, WarningRegular } from "@fluentui/react-icons";
+import {
+  Dismiss24Regular,
+  PersonRegular,
+  DocumentTextRegular,
+  CheckmarkCircleRegular,
+  DismissCircleRegular,
+  WarningRegular,
+  ArrowUndoRegular,
+  BoxRegular,
+  LaptopRegular,
+} from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
 import { getAvailableAssetsForCategory, AvailableAssetOption } from "../Services/AssetInventoryService";
 import {
   getAssetHRRequestDetail,
   assignHRRequestItem,
+  adminActionOnHRRequest,
+  adminReprogressHRRequest,
   AssetHRRequestDetail,
   AssetHRRequestItemDetail,
 } from "../Services/AssetHRRequestService";
+import {
+  DrawerTopIdentityCard,
+  InfoCardGroup,
+  InfoRow,
+  OptionCard,
+  DecisionContainer,
+  DecisionSummaryCard,
+  DecisionOptionDef,
+} from "./RequestDrawerComponents";
 
-const STATUS_COLOR: Record<string, "warning" | "informative" | "success" | "danger"> = {
-  Pending: "warning",
-  InProgress: "informative",
-  Approved: "informative",
-  Completed: "success",
-  Rejected: "danger",
+const formatDate = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
+const formatDateTime = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
+
+type HRDecisionChoice = "Allocate" | "Clarification" | "Reject" | "Complete";
+
+const HR_DECISION_OPTIONS: Record<HRDecisionChoice, DecisionOptionDef> = {
+  Allocate: {
+    kind: "Allocate",
+    label: "Allocate Available Hardware",
+    description: "Assign in-stock inventory assets to pending applicant requirements",
+    icon: <LaptopRegular />,
+    accent: "#059669",
+    iconBg: "#ECFDF5",
+    activeBg: "#F0FDF4",
+    activeBorder: "#10B981",
+  },
+  Complete: {
+    kind: "Complete",
+    label: "Finalize & Complete Requisition",
+    description: "Conclude provisioning and mark requisition ready for onboarding handoff",
+    icon: <CheckmarkCircleRegular />,
+    accent: "#007ED5",
+    iconBg: "#EFF6FF",
+    activeBg: "#EFF6FF",
+    activeBorder: "#007ED5",
+  },
+  Clarification: {
+    kind: "Clarification",
+    label: "Request Clarification from HR",
+    description: "Query HR regarding start date changes, role specifications, or Entra IDs",
+    icon: <ArrowUndoRegular />,
+    accent: "#D97706",
+    iconBg: "#FFFBEB",
+    activeBg: "#FFFBEB",
+    activeBorder: "#F59E0B",
+  },
+  Reject: {
+    kind: "Reject",
+    label: "Reject Requisition",
+    description: "Decline onboarding requisition due to hiring freeze or duplicate submission",
+    icon: <DismissCircleRegular />,
+    accent: "#DC2626",
+    iconBg: "#FEF2F2",
+    activeBg: "#FEF2F2",
+    activeBorder: "#EF4444",
+  },
 };
-
-const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString("en-IN") : "-");
 
 interface HRRequestDetailsPanelProps {
   open: boolean;
@@ -50,8 +106,12 @@ interface HRRequestDetailsPanelProps {
   onActionComplete: () => void;
 }
 
-const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onOpenChange, hrRequestId, onActionComplete }) => {
-  const navigate = useNavigate();
+const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({
+  open,
+  onOpenChange,
+  hrRequestId,
+  onActionComplete,
+}) => {
   const { currentUser } = useAuth();
   const { mountNode, portal } = useThemedMountNode();
   const toasterId = useId("hr-request-details-toaster");
@@ -63,16 +123,26 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
   const [selectedAssetByItem, setSelectedAssetByItem] = useState<Record<string, string>>({});
   const [assigningItemId, setAssigningItemId] = useState<string | null>(null);
 
+  // Decision state
+  const [selectedDecision, setSelectedDecision] = useState<HRDecisionChoice>("Allocate");
+  const [clarificationReason, setClarificationReason] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [completionNotes, setCompletionNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Quick allocation state inside the decision card
+  const [quickAllocationItemId, setQuickAllocationItemId] = useState<string>("");
+
   const loadDetail = async () => {
     if (!hrRequestId) return;
     setLoading(true);
     try {
       const data = await getAssetHRRequestDetail(hrRequestId);
       setDetail(data);
-    } catch (error) {
+    } catch (error: any) {
       dispatchToast(
         <Toast>
-          <ToastTitle>{error instanceof Error ? error.message : "Failed to load request details"}</ToastTitle>
+          <ToastTitle>{error?.message || "Failed to load HR request details"}</ToastTitle>
         </Toast>,
         { intent: "error" }
       );
@@ -83,10 +153,14 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
 
   useEffect(() => {
     if (open && hrRequestId) {
+      setSelectedDecision("Allocate");
+      setClarificationReason("");
+      setRejectionReason("");
+      setCompletionNotes("");
       setSelectedAssetByItem({});
+      setQuickAllocationItemId("");
       loadDetail();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, hrRequestId]);
 
   const itemsByApplicant = useMemo(() => {
@@ -104,10 +178,10 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
     try {
       const assets = await getAvailableAssetsForCategory(categoryName);
       setAssetsByCategory((prev) => ({ ...prev, [categoryName]: assets }));
-    } catch (error) {
+    } catch {
       dispatchToast(
         <Toast>
-          <ToastTitle>{error instanceof Error ? error.message : "Failed to load available assets"}</ToastTitle>
+          <ToastTitle>Failed to load available assets</ToastTitle>
         </Toast>,
         { intent: "error" }
       );
@@ -122,16 +196,16 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
       await assignHRRequestItem(item.ID, { assetId, resolvedUserId, actionedByUserId: currentUser.userID });
       dispatchToast(
         <Toast>
-          <ToastTitle>Asset assigned successfully</ToastTitle>
+          <ToastTitle>Asset allocated successfully</ToastTitle>
         </Toast>,
         { intent: "success" }
       );
       await loadDetail();
       onActionComplete();
-    } catch (error) {
+    } catch (error: any) {
       dispatchToast(
         <Toast>
-          <ToastTitle>{error instanceof Error ? error.message : "Failed to assign asset"}</ToastTitle>
+          <ToastTitle>{error?.message || "Failed to allocate asset"}</ToastTitle>
         </Toast>,
         { intent: "error" }
       );
@@ -139,6 +213,83 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
       setAssigningItemId(null);
     }
   };
+
+  const isCompleted = detail?.request.Status === "Completed";
+  const isActionable = !isCompleted && !!detail?.request;
+  const pendingItems = (detail?.items ?? []).filter((i) => i.Status === "Pending");
+  const fulfilledCount = (detail?.items ?? []).filter((i) => i.Status === "Completed" || i.Status === "Assigned").length;
+
+  const handleDecisionSubmit = async () => {
+    if (!currentUser?.userID || !detail?.request) return;
+    setIsSubmitting(true);
+
+    try {
+      if (selectedDecision === "Complete") {
+        await adminActionOnHRRequest(
+          detail.request.ID,
+          "Approve",
+          currentUser.userID,
+          currentUser.displayName,
+          currentUser.email,
+          completionNotes || "All onboarding assets allocated and verified"
+        );
+        dispatchToast(
+          <Toast>
+            <ToastTitle>HR Requisition finalized and marked Completed</ToastTitle>
+          </Toast>,
+          { intent: "success" }
+        );
+      } else if (selectedDecision === "Clarification") {
+        await adminReprogressHRRequest(
+          detail.request.ID,
+          clarificationReason,
+          currentUser.userID,
+          currentUser.displayName,
+          currentUser.email
+        );
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Clarification inquiry dispatched to HR</ToastTitle>
+          </Toast>,
+          { intent: "info" }
+        );
+      } else if (selectedDecision === "Reject") {
+        await adminActionOnHRRequest(
+          detail.request.ID,
+          "Reject",
+          currentUser.userID,
+          currentUser.displayName,
+          currentUser.email,
+          rejectionReason
+        );
+        dispatchToast(
+          <Toast>
+            <ToastTitle>HR Requisition rejected</ToastTitle>
+          </Toast>,
+          { intent: "success" }
+        );
+      }
+
+      onActionComplete();
+      onOpenChange(false);
+    } catch (error: any) {
+      dispatchToast(
+        <Toast>
+          <ToastTitle>{error?.message || "Failed to process HR decision"}</ToastTitle>
+        </Toast>,
+        { intent: "error" }
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isSubmitDisabled =
+    isSubmitting ||
+    (selectedDecision === "Clarification" && !clarificationReason.trim()) ||
+    (selectedDecision === "Reject" && !rejectionReason.trim());
+
+  const currentOptionDef = HR_DECISION_OPTIONS[selectedDecision];
 
   return (
     <Drawer
@@ -148,8 +299,8 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
       position="end"
       onOpenChange={(_, data) => onOpenChange(data.open)}
       style={{
-        width: "min(880px, 80vw)",
-        maxWidth: "80vw",
+        width: "min(1140px, 96vw)",
+        maxWidth: "96vw",
         backgroundColor: "#FFFFFF",
         background: "#FFFFFF",
         boxShadow: "-10px 0 40px rgba(15, 23, 42, 0.18)",
@@ -157,161 +308,388 @@ const HRRequestDetailsPanel: React.FC<HRRequestDetailsPanelProps> = ({ open, onO
     >
       <Toaster toasterId={toasterId} />
       {portal}
-      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
+
+      {/* Header */}
+      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
         <DrawerHeaderTitle
           action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}
         >
-          HR Request Details
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 8,
+                background: "#EFF6FF",
+                color: "#007ED5",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              <PersonRegular style={{ fontSize: 18 }} />
+            </div>
+            <div>
+              <Text weight="bold" style={{ color: "#0F172A", fontSize: "15px", display: "block" }}>
+                HR Asset Request Details
+              </Text>
+              <span style={{ fontSize: "12px", color: "#64748B" }}>
+                New hire onboarding and staff asset provisioning ({detail?.request.HRRequestID || "HR Requisition"})
+              </span>
+            </div>
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody style={{ backgroundColor: "#FFFFFF" }}>
+
+      {/* Body */}
+      <DrawerBody style={{ backgroundColor: "#FFFFFF", padding: "20px 24px" }}>
         {loading || !detail ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
-            <Spinner label="Loading..." />
+            <Spinner label="Loading HR request details..." />
           </div>
         ) : (
-          <div style={{ paddingTop: "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <Text size={500} weight="semibold">
-                  {detail.request.HRRequestID}
-                </Text>
-                <br />
-                <Text size={200} style={{ color: "#605E5C" }}>
-                  Raised by {detail.request.RequestedUserName} on {formatDate(detail.request.CreatedAt)}
-                </Text>
-              </div>
-              <Badge appearance="tint" color={STATUS_COLOR[detail.request.Status]} size="large">
-                {detail.request.Status}
-              </Badge>
-            </div>
-            <Text size={200} style={{ color: "#605E5C", display: "block", marginTop: "6px" }}>
-              Assigned Admin(s): {detail.request.AssignedAdminName ?? "-"}
-            </Text>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1.65fr) minmax(360px, 1fr)",
+              gap: "24px",
+              alignItems: "start",
+              paddingBottom: "24px",
+            }}
+          >
+            {/* Left Column (~65%): Information Card Groups */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+              {/* Requester Identity Card */}
+              <DrawerTopIdentityCard
+                name={detail.request.RequestedUserName || "HR Specialist"}
+                jobTitle={detail.request.HRRequestID ? `Requisition ${detail.request.HRRequestID}` : "HR Onboarding Requisition"}
+                email={detail.request.RequestedUserMailID}
+                dateLabel={`Submitted on ${formatDate(detail.request.CreatedAt)}`}
+                status={detail.request.Status}
+                statusColor={
+                  detail.request.Status === "Completed"
+                    ? "success"
+                    : detail.request.Status === "Rejected"
+                    ? "danger"
+                    : "warning"
+                }
+              />
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-              <Button appearance="primary" onClick={() => navigate(`/Asset/hr-requests/${detail.request.ID}`)}>
-                View Full Details
-              </Button>
-            </div>
+              {/* Requisition Overview */}
+              <InfoCardGroup title="Requisition Overview">
+                <InfoRow label="Request ID" value={detail.request.HRRequestID} />
+                <InfoRow label="Status" value={detail.request.Status} />
+                <InfoRow label="Assigned IT Admin" value={detail.request.AssignedAdminName || "Central IT"} />
+                <InfoRow label="Admin Contact" value={detail.request.AssignedAdminMailID || "it@quadrasystems.net"} />
+                <InfoRow label="Submission Date" value={formatDateTime(detail.request.CreatedAt)} />
+                <InfoRow label="Last Modified" value={formatDateTime(detail.request.ModifiedAt)} hasDivider={false} />
+              </InfoCardGroup>
 
-            <Divider style={{ margin: "18px 0" }} />
-
-            <Text weight="semibold" style={{ display: "block", marginBottom: "10px" }}>
-              Applicants ({detail.applicants.length})
-            </Text>
-
-            <Accordion collapsible multiple>
-              {detail.applicants.map((applicant) => {
-                const items = itemsByApplicant[applicant.ID] ?? [];
-                return (
-                  <AccordionItem key={applicant.ID} value={applicant.ID}>
-                    <AccordionHeader>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingRight: "12px" }}>
-                        <div>
-                          <Text weight="medium">{applicant.ApplicantName}</Text>
-                          <Text size={200} style={{ color: "#605E5C", marginLeft: "8px" }}>
-                            {applicant.ApplicantMailID}
-                          </Text>
+              {/* Applicants & Equipment Breakdown */}
+              <InfoCardGroup title={`Applicants & Hardware Allocation (${detail.applicants.length})`}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "8px 0" }}>
+                  {detail.applicants.map((applicant) => {
+                    const items = itemsByApplicant[applicant.ID] ?? [];
+                    return (
+                      <div
+                        key={applicant.ID}
+                        style={{
+                          background: "#FFFFFF",
+                          border: "1px solid #E2E8F0",
+                          borderRadius: "10px",
+                          padding: "14px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                          <div>
+                            <Text weight="semibold" style={{ color: "#0F172A", fontSize: "14px", display: "block" }}>
+                              {applicant.ApplicantName}
+                            </Text>
+                            <span style={{ fontSize: "12px", color: "#64748B" }}>
+                              {applicant.ApplicantMailID} {applicant.JoiningDate && `· Joining ${formatDate(applicant.JoiningDate)}`}
+                            </span>
+                          </div>
+                          <Badge appearance="tint" color={applicant.Status === "Completed" ? "success" : "warning"}>
+                            {applicant.Status}
+                          </Badge>
                         </div>
-                        <Badge appearance="tint" color={STATUS_COLOR[applicant.Status]}>
-                          {applicant.Status}
-                        </Badge>
-                      </div>
-                    </AccordionHeader>
-                    <AccordionPanel>
-                      {!applicant.HasEntraIdentity && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "10px 12px",
-                            background: "#FFF4CE",
-                            border: "1px solid #F2C811",
-                            borderRadius: "6px",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          <WarningRegular style={{ color: "#7A5D00" }} />
-                          <Text size={200} style={{ color: "#7A5D00" }}>
-                            This user is not added on the Entra ID — assets can't be assigned until they have a work account.
-                          </Text>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {items.map((item) => {
-                          const isPending = item.Status === "Pending";
-                          const canAssign = isPending && applicant.HasEntraIdentity;
-                          return (
-                            <div
-                              key={item.ID}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                padding: "10px 12px",
-                                border: "1px solid #E1DFDD",
-                                borderRadius: "8px",
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <Text weight="medium" style={{ minWidth: "140px" }}>
-                                {item.CategoryName}
-                              </Text>
-                              <Badge appearance="tint" color={STATUS_COLOR[item.Status]}>
-                                {item.Status}
-                              </Badge>
-                              {item.Status === "Completed" && (
-                                <Text size={200} style={{ color: "#605E5C" }}>
-                                  Approved by {item.ApprovedAdminName ?? "-"} on {formatDate(item.ApprovedDate)}
-                                </Text>
-                              )}
-                              {canAssign && (
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto" }}>
-                                  <Dropdown
-                                    placeholder="Choose asset"
-                                    mountNode={mountNode}
-                                    style={{ minWidth: "220px" }}
-                                    value={
-                                      assetsByCategory[item.CategoryName]?.find((a) => a.ID === selectedAssetByItem[item.ID])
-                                        ?.AssetName ?? ""
-                                    }
-                                    onOpenChange={(_, d) => d.open && ensureAssetsLoaded(item.CategoryName)}
-                                    onOptionSelect={(_, d) =>
-                                      setSelectedAssetByItem((prev) => ({ ...prev, [item.ID]: d.optionValue ?? "" }))
-                                    }
-                                  >
-                                    {(assetsByCategory[item.CategoryName] ?? []).length === 0 ? (
-                                      <Option key="none" value="" disabled>
-                                        No in-stock assets available
-                                      </Option>
-                                    ) : (
-                                      assetsByCategory[item.CategoryName].map((asset) => (
-                                        <Option key={asset.ID} value={asset.ID} text={asset.AssetName}>
-                                          {asset.AssetName} ({asset.AssetTagID})
-                                        </Option>
-                                      ))
-                                    )}
-                                  </Dropdown>
-                                  <Button
-                                    appearance="primary"
-                                    disabled={!selectedAssetByItem[item.ID] || assigningItemId === item.ID}
-                                    onClick={() => handleAssign(item, applicant.ResolvedUserID as string)}
-                                  >
-                                    {assigningItemId === item.ID ? <Spinner size="tiny" /> : "Add Asset"}
-                                  </Button>
+
+                        {!applicant.HasEntraIdentity && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "8px 12px",
+                              background: "#FEF3C7",
+                              border: "1px solid #FDE68A",
+                              borderRadius: "8px",
+                              marginBottom: "10px",
+                              fontSize: "12px",
+                              color: "#92400E",
+                            }}
+                          >
+                            <WarningRegular style={{ color: "#B45309", fontSize: 16, flexShrink: 0 }} />
+                            <span>
+                              Pending Entra ID creation. Assets can be allocated once account is active.
+                            </span>
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {items.map((item) => {
+                            const isPending = item.Status === "Pending";
+                            const canAssign = isPending && applicant.HasEntraIdentity;
+                            return (
+                              <div
+                                key={item.ID}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: "10px",
+                                  padding: "8px 12px",
+                                  background: "#F8FAFC",
+                                  border: "1px solid #E2E8F0",
+                                  borderRadius: "6px",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <div>
+                                  <span style={{ fontWeight: 600, color: "#0F172A", fontSize: "13px" }}>
+                                    {item.CategoryName}
+                                  </span>
+                                  <div style={{ fontSize: "11px", color: "#64748B" }}>
+                                    Status: <strong>{item.Status}</strong>
+                                    {item.ApprovedDate && ` · Allocated ${formatDate(item.ApprovedDate)}`}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+
+                                {canAssign ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
+                                    <Dropdown
+                                      placeholder="Select available asset"
+                                      mountNode={mountNode}
+                                      style={{ minWidth: "190px" }}
+                                      value={
+                                        assetsByCategory[item.CategoryName]?.find((a) => a.ID === selectedAssetByItem[item.ID])
+                                          ?.AssetName ?? ""
+                                      }
+                                      onOpenChange={(_, d) => d.open && ensureAssetsLoaded(item.CategoryName)}
+                                      onOptionSelect={(_, d) =>
+                                        setSelectedAssetByItem((prev) => ({ ...prev, [item.ID]: d.optionValue ?? "" }))
+                                      }
+                                    >
+                                      {(assetsByCategory[item.CategoryName] ?? []).length === 0 ? (
+                                        <Option key="none" value="" disabled>
+                                          No in-stock assets available
+                                        </Option>
+                                      ) : (
+                                        assetsByCategory[item.CategoryName].map((asset) => (
+                                          <Option key={asset.ID} value={asset.ID} text={asset.AssetName}>
+                                            {asset.AssetName} ({asset.AssetTagID})
+                                          </Option>
+                                        ))
+                                      )}
+                                    </Dropdown>
+                                    <button
+                                      type="button"
+                                      disabled={!selectedAssetByItem[item.ID] || assigningItemId === item.ID}
+                                      onClick={() => handleAssign(item, applicant.ResolvedUserID as string)}
+                                      style={{
+                                        background: "#007ED5",
+                                        color: "#FFFFFF",
+                                        border: "none",
+                                        borderRadius: "16px",
+                                        padding: "6px 16px",
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                        cursor: !selectedAssetByItem[item.ID] || assigningItemId === item.ID ? "not-allowed" : "pointer",
+                                        opacity: !selectedAssetByItem[item.ID] ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {assigningItemId === item.ID ? <Spinner size="tiny" /> : "Assign"}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <Badge appearance="tint" color={item.Status === "Completed" ? "success" : "warning"}>
+                                    {item.Status}
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </AccordionPanel>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+                    );
+                  })}
+                </div>
+              </InfoCardGroup>
+
+              {/* If completed, show Left Side Decision Record */}
+              {isCompleted && (
+                <DecisionSummaryCard
+                  status="Completed"
+                  decidedBy={detail.request.AssignedAdminName || "Central IT"}
+                  decidedDate={detail.request.ModifiedAt || detail.request.CreatedAt}
+                  decidedReason="All requested hardware allocated and confirmed for onboarding."
+                  extraDetails={[
+                    { label: "Fulfilled Assets", value: `${fulfilledCount} Assets` },
+                    { label: "Applicants", value: `${detail.applicants.length} Staff` },
+                  ]}
+                />
+              )}
+            </div>
+
+            {/* Right Column (~35%): Make Decision or Fulfillment Summary */}
+            <div style={{ position: "sticky", top: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+              {isActionable ? (
+                <DecisionContainer
+                  isActionable={true}
+                  title="Make Decision"
+                  subtitle="Allocate inventory or resolve requisition"
+                  badgeLabel="Action Required"
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {/* Option 1: Allocate */}
+                    <OptionCard
+                      def={HR_DECISION_OPTIONS.Allocate}
+                      selected={selectedDecision === "Allocate"}
+                      onClick={() => setSelectedDecision("Allocate")}
+                    >
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          background: "#FFFFFF",
+                          border: "1px solid #BFDBFE",
+                          fontSize: "12px",
+                          color: "#1E40AF",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <strong>Fulfillment Progress:</strong> {fulfilledCount} of {detail.items.length} item(s) allocated.
+                        {pendingItems.length > 0 ? (
+                          <div style={{ color: "#D97706", marginTop: "4px" }}>
+                            ⏳ {pendingItems.length} requirement(s) pending hardware assignment in the left panel.
+                          </div>
+                        ) : (
+                          <div style={{ color: "#059669", marginTop: "4px" }}>
+                            ✓ All hardware requirements assigned! Ready to finalize.
+                          </div>
+                        )}
+                      </div>
+                    </OptionCard>
+
+                    {/* Option 2: Complete */}
+                    <OptionCard
+                      def={HR_DECISION_OPTIONS.Complete}
+                      selected={selectedDecision === "Complete"}
+                      onClick={() => setSelectedDecision("Complete")}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#1D4ED8" }}>
+                          Fulfillment / Dispatch Notes <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
+                        </label>
+                        <Textarea
+                          placeholder="e.g. All hardware tagged, imaged, and staged for courier dispatch..."
+                          value={completionNotes}
+                          onChange={(_, d) => setCompletionNotes(d.value)}
+                          rows={2}
+                        />
+                      </div>
+                    </OptionCard>
+
+                    {/* Option 3: Clarification */}
+                    <OptionCard
+                      def={HR_DECISION_OPTIONS.Clarification}
+                      selected={selectedDecision === "Clarification"}
+                      onClick={() => setSelectedDecision("Clarification")}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
+                          Clarification Prompt for HR <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <Textarea
+                          placeholder="e.g. Please confirm applicant joining date delay or department change..."
+                          value={clarificationReason}
+                          onChange={(_, d) => setClarificationReason(d.value)}
+                          rows={3}
+                        />
+                      </div>
+                    </OptionCard>
+
+                    {/* Option 4: Reject */}
+                    <OptionCard
+                      def={HR_DECISION_OPTIONS.Reject}
+                      selected={selectedDecision === "Reject"}
+                      onClick={() => setSelectedDecision("Reject")}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
+                          Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <Textarea
+                          placeholder="Explain reason for rejecting this HR onboarding requisition..."
+                          value={rejectionReason}
+                          onChange={(_, d) => setRejectionReason(d.value)}
+                          rows={3}
+                        />
+                      </div>
+                    </OptionCard>
+                  </div>
+
+                  {/* Primary Submit Button */}
+                  <button
+                    type="button"
+                    disabled={isSubmitDisabled}
+                    onClick={handleDecisionSubmit}
+                    style={{
+                      width: "100%",
+                      marginTop: "6px",
+                      background: currentOptionDef.accent,
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: "22px",
+                      padding: "11px 24px",
+                      fontSize: "13.5px",
+                      fontWeight: 700,
+                      cursor: isSubmitDisabled ? "not-allowed" : "pointer",
+                      opacity: isSubmitDisabled ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      boxShadow: isSubmitDisabled ? "none" : `0 3px 10px ${currentOptionDef.accent}40`,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {isSubmitting ? (
+                      <Spinner size="tiny" />
+                    ) : (
+                      <>
+                        {currentOptionDef.icon}
+                        <span>Confirm {currentOptionDef.label.split(" ")[0]}</span>
+                      </>
+                    )}
+                  </button>
+                </DecisionContainer>
+              ) : (
+                /* Completed Summary Card */
+                <DecisionSummaryCard
+                  status="Completed"
+                  decidedBy={detail.request.AssignedAdminName || "Central IT"}
+                  decidedDate={detail.request.ModifiedAt || detail.request.CreatedAt}
+                  decidedReason="All requested hardware allocated and confirmed for onboarding."
+                  extraDetails={[
+                    { label: "Fulfilled Assets", value: `${fulfilledCount} Assets` },
+                    { label: "Applicants", value: `${detail.applicants.length} Staff` },
+                  ]}
+                />
+              )}
+            </div>
           </div>
         )}
       </DrawerBody>

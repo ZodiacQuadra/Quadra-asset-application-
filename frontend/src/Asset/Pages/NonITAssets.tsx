@@ -741,13 +741,13 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
         <div
           style={{
             background: "#FFFFFF",
-            borderRadius: 16,
+            borderRadius: 25,
             border: "1px solid #EDF2F7",
             boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
             overflow: "visible",
           }}
         >
-          <div style={{ overflowX: "auto", position: "relative" }}>
+          <div style={{ overflowX: "auto", position: "relative", borderRadius: 25 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #EDF2F7", background: "#FFFFFF" }}>
@@ -1492,7 +1492,7 @@ const NonITAssets: React.FC<NonITAssetsProps> = ({ topToggle }) => {
       <NonITAssetFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        editingAsset={editingAsset}
+        asset={editingAsset}
         onSaved={loadAll}
       />
     </div>

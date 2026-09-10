@@ -356,7 +356,7 @@ const renderTypeIcon = (category: string) => {
 };
 
 // Default seed items matching Screenshot 2 precisely
-const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = [
+const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = ([
   {
     ID: "demo-ast-001",
     AssetName: 'MacBook Pro 16"',
@@ -501,7 +501,7 @@ const SCREENSHOT_DEFAULT_ASSETS: AssetInventoryRecord[] = [
     AssignedToName: "Shared Office",
     AssignedToDepartment: "Office",
   },
-];
+] as any);
 
 const AssetInventory: React.FC = () => {
   const { currentUser } = useAuth();
@@ -997,21 +997,21 @@ const AssetInventory: React.FC = () => {
 
           {/* Main Table or Grid View */}
           {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "60px", background: "#ffffff", borderRadius: 16 }}>
+            <div style={{ display: "flex", justifyContent: "center", padding: "60px", background: "#ffffff", borderRadius: 25 }}>
               <Spinner label="Loading asset inventory..." />
             </div>
           ) : viewMode === "list" ? (
-            /* Table matching Screenshot 2 precisely */
+            /* Table matching Screenshot 2 precisely with corner radius 25 */
             <div
               style={{
                 background: "#FFFFFF",
-                borderRadius: 16,
+                borderRadius: 25,
                 border: "1px solid #EDF2F7",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
                 overflow: "visible",
               }}
             >
-              <div style={{ overflowX: "auto", position: "relative" }}>
+              <div style={{ overflowX: "auto", position: "relative", borderRadius: 25 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid #EDF2F7", background: "#FFFFFF" }}>

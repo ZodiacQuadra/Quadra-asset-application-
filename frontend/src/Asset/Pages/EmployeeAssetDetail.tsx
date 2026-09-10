@@ -11,6 +11,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Drawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
   Combobox,
   Option,
   Checkbox,
@@ -830,76 +834,52 @@ const EmployeeAssetDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Add Asset dialog */}
-      <Dialog open={addOpen} onOpenChange={(_, d) => setAddOpen(d.open)}>
-        <DialogSurface
-          mountNode={mountNode}
-          style={{
-            borderRadius: "20px",
-            maxWidth: "740px",
-            width: "95vw",
-            padding: "0px",
-            overflow: "hidden",
-            background: "#FFFFFF",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
-            {/* Modal Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "20px 24px",
-                borderBottom: "1px solid #F1F5F9",
-                background: "#FFFFFF",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    borderRadius: "12px",
-                    background: "#EFF6FF",
-                    color: "#007ED5",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "22px",
-                  }}
-                >
-                  <AddRegular />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
-                    Assign Asset to Employee
-                  </h2>
-                  <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "2px" }}>
-                    Select available corporate inventory to allocate to {employee?.DisplayName || "employee"}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
+      {/* Add Asset Drawer */}
+      <Drawer
+        type="overlay"
+        position="end"
+        open={addOpen}
+        onOpenChange={(_, d) => setAddOpen(d.open)}
+        style={{ width: "min(640px, 92vw)" }}
+      >
+        <DrawerHeader style={{ borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
+          <DrawerHeaderTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="close"
+                icon={<DismissRegular style={{ fontSize: "18px" }} />}
                 onClick={() => setAddOpen(false)}
+              />
+            }
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#64748B",
-                  cursor: "pointer",
-                  padding: "6px",
-                  borderRadius: "8px",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: "#EFF6FF",
+                  color: "#007ED5",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  fontSize: 18,
+                  flexShrink: 0,
                 }}
               >
-                <DismissRegular style={{ fontSize: "20px" }} />
-              </button>
+                <AddRegular />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+                  Assign Asset to Employee
+                </h2>
+              </div>
             </div>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+
+        <DrawerBody style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
             {/* Employee Quick Info Banner */}
             <div
@@ -1240,37 +1220,47 @@ const EmployeeAssetDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Modal Actions Footer */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                gap: "12px",
-                padding: "16px 24px",
-                borderTop: "1px solid #F1F5F9",
-                background: "#FFFFFF",
-              }}
-            >
-              <Button appearance="secondary" onClick={() => setAddOpen(false)} disabled={assigning}>
-                Cancel
-              </Button>
-              <Button
-                appearance="primary"
-                icon={<AddRegular />}
-                onClick={handleAssign}
-                disabled={!selectedAssetId || assigning}
-                style={{
-                  background: selectedAssetId ? "#007ED5" : undefined,
-                  fontWeight: 600,
-                }}
-              >
-                {assigning ? <Spinner size="tiny" /> : `Assign Asset to ${employee?.DisplayName ? employee.DisplayName.split(" ")[0] : "Employee"}`}
-              </Button>
-            </div>
-          </div>
-        </DialogSurface>
-      </Dialog>
+        </DrawerBody>
+
+        {/* Drawer Actions Footer */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "12px",
+            padding: "16px 24px",
+            borderTop: "1px solid #E2E8F0",
+            background: "#FFFFFF",
+            position: "sticky",
+            bottom: 0,
+            zIndex: 10,
+          }}
+        >
+          <Button
+            appearance="secondary"
+            style={{ borderRadius: "25px", padding: "8px 20px" }}
+            onClick={() => setAddOpen(false)}
+            disabled={assigning}
+          >
+            Cancel
+          </Button>
+          <Button
+            appearance="primary"
+            icon={<AddRegular />}
+            onClick={handleAssign}
+            disabled={!selectedAssetId || assigning}
+            style={{
+              background: selectedAssetId ? "#007ED5" : undefined,
+              fontWeight: 600,
+              borderRadius: "25px",
+              padding: "8px 24px",
+            }}
+          >
+            {assigning ? <Spinner size="tiny" /> : `Assign Asset to ${employee?.DisplayName ? employee.DisplayName.split(" ")[0] : "Employee"}`}
+          </Button>
+        </div>
+      </Drawer>
 
       {/* Remove confirmation dialog */}
       <Dialog open={!!removeTarget} onOpenChange={(_, d) => !d.open && setRemoveTarget(null)}>

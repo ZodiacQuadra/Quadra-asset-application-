@@ -213,3 +213,39 @@ export const assignReplacementForLostItem = async (
     handleAxiosError(error, "Failed to assign replacement");
   }
 };
+
+export const adminActionOnLostRequest = async (
+  requestId: string,
+  action: "Approve" | "Reject",
+  actedByUserId: string,
+  actedByName?: string,
+  reason?: string
+): Promise<void> => {
+  try {
+    await axios.post(
+      `${API_BASE_URL}/${requestId}/admin-action`,
+      { action, reason, actedByUserId, actedByName },
+      { headers: getAuthHeaders() }
+    );
+  } catch (error) {
+    handleAxiosError(error, "Failed to record admin decision on lost request");
+  }
+};
+
+export const adminReprogressLostRequest = async (
+  requestId: string,
+  reason: string,
+  actedByUserId: string,
+  actedByName?: string
+): Promise<void> => {
+  try {
+    await axios.post(
+      `${API_BASE_URL}/${requestId}/admin-reprogress`,
+      { reason, actedByUserId, actedByName },
+      { headers: getAuthHeaders() }
+    );
+  } catch (error) {
+    handleAxiosError(error, "Failed to send lost request for re-progress");
+  }
+};
+

@@ -66,11 +66,12 @@ import { CANONICAL_BRANCHES, CANONICAL_DEPARTMENTS, normalizeBranch, normalizeDe
 type TabKey = "assignments" | "purchases" | "stock" | "insights";
 type InsightKey = "new" | "repair" | "upgrade" | "hr";
 
-const HR_STATUS_COLOR: Record<HRRequestStatus, "warning" | "informative" | "success" | "danger"> = {
+const HR_STATUS_COLOR: Record<HRRequestStatus, "success" | "warning" | "danger" | "informative"> = {
   Pending: "warning",
   InProgress: "informative",
   Completed: "success",
   Rejected: "danger",
+  Draft: "informative",
 };
 
 const formatCurrencyShort = (value: number): string => {
@@ -643,7 +644,7 @@ const AssetReports: React.FC = () => {
                   borderRadius: 999,
                 }}
               >
-                {overview.kpi?.AssignedCount ?? overview.assignmentByDepartment.reduce((acc, d) => acc + d.AssignedCount, 0)} assets
+                {overview.kpi?.AssetsAssignedCount ?? overview.assignmentByDepartment.reduce((acc, d) => acc + d.AssignedCount, 0)} assets
               </span>
             </div>
 
@@ -1781,34 +1782,100 @@ const AssetReports: React.FC = () => {
                 filteredNewRequests.length === 0 ? (
                   <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No new asset requests found.</Text>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
                     {filteredNewRequests.map((r) => (
-                      <div key={r.ID} className="quadra-chip-pill" style={{ padding: "18px", borderRadius: "14px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <TruncatedText text={r.AssetType} weight="semibold" />
-                            <TruncatedText
-                              text={`${r.RequestNumber} · ${r.RequestedByName ?? "Unknown"}`}
-                              size={200}
-                              color="#64748b"
-                            />
+                      <div
+                        key={r.ID}
+                        className="quadra-chip-pill"
+                        style={{
+                          padding: "16px 18px",
+                          borderRadius: "16px",
+                          background: "#ffffff",
+                          border: "1px solid #E2E8F0",
+                          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          minHeight: "155px",
+                          gap: "10px",
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: "#475569",
+                                background: "#F1F5F9",
+                                padding: "2px 8px",
+                                borderRadius: "6px",
+                                letterSpacing: "0.02em",
+                              }}
+                            >
+                              {r.RequestNumber || "REQ"}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                padding: "3px 9px",
+                                borderRadius: "999px",
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
+                                lineHeight: "1.2",
+                                background:
+                                  REQUEST_STATUS_COLOR[r.OverallStatus] === "warning" || REQUEST_STATUS_COLOR[r.OverallStatus] === "important"
+                                    ? "#FEF3C7"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "success"
+                                    ? "#DCFCE7"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "danger"
+                                    ? "#FEE2E2"
+                                    : "#E0F2FE",
+                                color:
+                                  REQUEST_STATUS_COLOR[r.OverallStatus] === "warning" || REQUEST_STATUS_COLOR[r.OverallStatus] === "important"
+                                    ? "#B45309"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "success"
+                                    ? "#15803D"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "danger"
+                                    ? "#B91C1C"
+                                    : "#0369A1",
+                                border: `1px solid ${
+                                  REQUEST_STATUS_COLOR[r.OverallStatus] === "warning" || REQUEST_STATUS_COLOR[r.OverallStatus] === "important"
+                                    ? "#FDE68A"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "success"
+                                    ? "#BBF7D0"
+                                    : REQUEST_STATUS_COLOR[r.OverallStatus] === "danger"
+                                    ? "#FECACA"
+                                    : "#BAE6FD"
+                                }`,
+                              }}
+                            >
+                              {r.OverallStatus === "AdminApprovalPending" || r.OverallStatus === "PendingAdminApproval"
+                                ? "Admin Pending"
+                                : (REQUEST_STATUS_LABEL[r.OverallStatus] || r.OverallStatus)}
+                            </span>
                           </div>
-                          <Badge appearance="tint" color={REQUEST_STATUS_COLOR[r.OverallStatus]}>
-                            {REQUEST_STATUS_LABEL[r.OverallStatus]}
-                          </Badge>
+
+                          <div style={{ fontWeight: 600, fontSize: "14px", color: "#0F172A", marginBottom: "4px" }}>
+                            {r.AssetType && r.AssetType !== "—" ? r.AssetType : (r.Category || "Asset Request")}
+                          </div>
+
+                          <div style={{ fontSize: "12px", color: "#64748B", marginBottom: "6px" }}>
+                            Requested by: <strong style={{ color: "#334155" }}>{r.RequestedByName ?? "Unknown"}</strong>
+                          </div>
+
+                          {r.PurposeOfRequest && (
+                            <div style={{ fontSize: "12px", color: "#475569", lineHeight: "1.4", margin: "4px 0" }}>
+                              {r.PurposeOfRequest}
+                            </div>
+                          )}
                         </div>
-                        <Text size={200} style={{ display: "block", marginTop: "10px", color: "#334155" }}>
-                          {r.PurposeOfRequest}
-                        </Text>
-                        <TruncatedText
-                          text={`Manager: ${r.AssignedManagerName ?? "-"}`}
-                          size={200}
-                          color="#64748b"
-                          style={{ marginTop: "8px" }}
-                        />
-                        <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "4px" }}>
-                          Created {formatDate(r.CreatedAt)}
-                        </Text>
+
+                        <div style={{ paddingTop: "8px", borderTop: "1px dashed #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11.5px", color: "#64748B" }}>
+                          <span>Manager: <strong style={{ color: "#475569" }}>{r.AssignedManagerName ?? "-"}</strong></span>
+                          <span>{formatDate(r.CreatedAt)}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1816,21 +1883,38 @@ const AssetReports: React.FC = () => {
               ) : filteredHRRequests.length === 0 ? (
                 <Text style={{ color: "#64748b", padding: "16px 0", display: "block" }}>No HR requests found.</Text>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
                   {filteredHRRequests.map((r) => (
-                    <div key={r.ID} className="quadra-chip-pill" style={{ padding: "18px", borderRadius: "14px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <div
+                      key={r.ID}
+                      className="quadra-chip-pill"
+                      style={{
+                        padding: "16px 18px",
+                        borderRadius: "16px",
+                        background: "#ffffff",
+                        border: "1px solid #E2E8F0",
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        minHeight: "120px",
+                        gap: "8px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <TruncatedText text={r.HRRequestID} weight="semibold" />
-                          <TruncatedText text={`Raised by ${r.RequestedUserName ?? "Unknown"}`} size={200} color="#64748b" />
+                          <div style={{ fontWeight: 600, fontSize: "14px", color: "#0F172A" }}>{r.HRRequestID}</div>
+                          <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
+                            Raised by {r.RequestedUserName ?? "Unknown"}
+                          </div>
                         </div>
                         <Badge appearance="tint" color={HR_STATUS_COLOR[r.Status]}>
                           {r.Status}
                         </Badge>
                       </div>
-                      <Text size={200} style={{ color: "#64748b", display: "block", marginTop: "10px" }}>
+                      <div style={{ paddingTop: "8px", borderTop: "1px dashed #E2E8F0", fontSize: "11.5px", color: "#64748B" }}>
                         {r.ApplicantCount} applicant{r.ApplicantCount === 1 ? "" : "s"} · {formatDate(r.CreatedAt)}
-                      </Text>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1892,15 +1976,15 @@ const AssetReports: React.FC = () => {
                         background: "#F8FAFC",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "8px",
+                        gap: "10px",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
                         <div>
-                          <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "13.5px" }}>
+                          <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "13.5px", lineHeight: "1.3" }}>
                             {branchName}
                           </div>
-                          <div style={{ fontSize: "11.5px", color: "#64748B" }}>
+                          <div style={{ fontSize: "11.5px", color: "#64748B", marginTop: "2px" }}>
                             {total} total asset{total === 1 ? "" : "s"}
                           </div>
                         </div>
@@ -1910,8 +1994,13 @@ const AssetReports: React.FC = () => {
                             fontWeight: 700,
                             color: color,
                             background: bg,
-                            padding: "2px 7px",
+                            padding: "3px 8px",
                             borderRadius: "999px",
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            lineHeight: "1.2",
                           }}
                         >
                           {util}% In Use
@@ -1937,6 +2026,7 @@ const AssetReports: React.FC = () => {
                     </div>
                   );
                 })}
+
               </div>
             </div>
 

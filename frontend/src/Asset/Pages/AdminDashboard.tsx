@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../Auth/AuthProvider";
 import AssetFormDialog from "../Components/AssetFormDialog";
+import NonITAssetFormDialog from "../Components/NonITAssetFormDialog";
 import AssetPurchaseCalendarDialog from "../Components/AssetPurchaseCalendarDialog";
 import AssignAssetToEmployeeDialog from "../Components/AssignAssetToEmployeeDialog";
 import AssetIcon from "../Components/AssetIcon";
@@ -69,6 +70,7 @@ const AdminDashboard: React.FC = () => {
   const [pendingCount, setPendingCount] = useState(12);
   const [loading, setLoading] = useState(true);
   const [addAssetOpen, setAddAssetOpen] = useState(false);
+  const [addNonITAssetOpen, setAddNonITAssetOpen] = useState(false);
   const [assignAssetOpen, setAssignAssetOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<AdminActivityRecord | null>(null);
@@ -181,7 +183,7 @@ const AdminDashboard: React.FC = () => {
         );
       default:
         return (
-          <div style={{ width: 40, height: 40, borderRadius: "12px", background: "#eef2ff", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid #e0e7ff" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "12px", background: "#eff6ff", color: "#007ed5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid #dbeafe" }}>
             <ClipboardTaskListLtrRegular style={{ fontSize: 20 }} />
           </div>
         );
@@ -231,14 +233,14 @@ const AdminDashboard: React.FC = () => {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16 }}>
             {[
-              { key: "headphone", label: "Headphone", icon: Headphones, color: "#7E22CE", bg: "#F5EFFB", border: "rgba(126, 34, 206, 0.08)", count: inStockCounts.headphone },
-              { key: "keyboard", label: "Keyboard", icon: Keyboard, color: "#C2410C", bg: "#FFF7ED", border: "rgba(194, 65, 12, 0.08)", count: inStockCounts.keyboard },
-              { key: "laptop", label: "Laptop", icon: Laptop, color: "#15803D", bg: "#F0FDF4", border: "rgba(21, 128, 61, 0.08)", count: inStockCounts.laptop },
-              { key: "mobile", label: "Mobile", icon: Smartphone, color: "#0F766E", bg: "#F0FDFA", border: "rgba(15, 118, 110, 0.08)", count: inStockCounts.mobile },
-              { key: "monitor", label: "Monitor", icon: Monitor, color: "#0284C7", bg: "#F0F9FF", border: "rgba(2, 132, 199, 0.08)", count: inStockCounts.monitor },
-              { key: "mouse", label: "Mouse", icon: Mouse, color: "#BE185D", bg: "#FDF2F8", border: "rgba(190, 24, 93, 0.08)", count: inStockCounts.mouse },
-              { key: "printer", label: "Printer", icon: Printer, color: "#4338CA", bg: "#EEF2FF", border: "rgba(67, 56, 202, 0.08)", count: inStockCounts.printer },
-              { key: "webcam", label: "Webcam", icon: Camera, color: "#A16207", bg: "#FEFCE8", border: "rgba(161, 98, 7, 0.10)", count: inStockCounts.webcam },
+              { key: "headphone", label: "Headphone", icon: Headphones, color: "#7E22CE", bg: "#F5EFFB", border: "rgba(126, 34, 206, 0.16)", count: inStockCounts.headphone },
+              { key: "keyboard", label: "Keyboard", icon: Keyboard, color: "#C2410C", bg: "#FFF7ED", border: "rgba(194, 65, 12, 0.16)", count: inStockCounts.keyboard },
+              { key: "laptop", label: "Laptop", icon: Laptop, color: "#15803D", bg: "#F0FDF4", border: "rgba(21, 128, 61, 0.16)", count: inStockCounts.laptop },
+              { key: "mobile", label: "Mobile", icon: Smartphone, color: "#0F766E", bg: "#F0FDFA", border: "rgba(15, 118, 110, 0.16)", count: inStockCounts.mobile },
+              { key: "monitor", label: "Monitor", icon: Monitor, color: "#0284C7", bg: "#F0F9FF", border: "rgba(2, 132, 199, 0.16)", count: inStockCounts.monitor },
+              { key: "mouse", label: "Mouse", icon: Mouse, color: "#BE185D", bg: "#FDF2F8", border: "rgba(190, 24, 93, 0.16)", count: inStockCounts.mouse },
+              { key: "printer", label: "Printer", icon: Printer, color: "#4338CA", bg: "#EEF2FF", border: "rgba(67, 56, 202, 0.16)", count: inStockCounts.printer },
+              { key: "webcam", label: "Webcam", icon: Camera, color: "#A16207", bg: "#FEFCE8", border: "rgba(161, 98, 7, 0.18)", count: inStockCounts.webcam },
             ].map((c) => {
               const IconComp = c.icon;
               return (
@@ -248,39 +250,41 @@ const AdminDashboard: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "16px 22px",
+                    padding: "16px 20px",
                     borderRadius: 16,
-                    background: c.bg,
-                    border: `1px solid ${c.border}`,
-                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
+                    background: "#FFFFFF",
+                    border: "1px solid #E2E8F0",
+                    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.03)",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     cursor: "default",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.05)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(0, 0, 0, 0.06)";
+                    e.currentTarget.style.borderColor = "#CBD5E1";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.02)";
+                    e.currentTarget.style.boxShadow = "0 1px 4px rgba(0, 0, 0, 0.03)";
+                    e.currentTarget.style.borderColor = "#E2E8F0";
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div
                       style={{
-                        width: 38,
-                        height: 38,
+                        width: 44,
+                        height: 44,
                         borderRadius: 12,
-                        background: "#FFFFFF",
+                        background: c.bg,
+                        border: `1px solid ${c.border}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
-                        border: "1px solid rgba(0, 0, 0, 0.04)",
                         flexShrink: 0,
+                        transition: "transform 0.2s ease",
                       }}
                     >
-                      <IconComp size={19} strokeWidth={1.5} color={c.color} />
+                      <IconComp size={21} strokeWidth={1.8} color={c.color} />
                     </div>
                     <span style={{ color: "#1E293B", fontSize: "14.5px", fontWeight: 600 }}>
                       {c.label}
@@ -316,9 +320,55 @@ const AdminDashboard: React.FC = () => {
               Quick Actions
             </Text>
 
-            {/* Action 1: Add Asset */}
+            {/* Action 1: Add IT Asset */}
             <div
+              id="btn-quick-add-it-asset"
               onClick={() => setAddAssetOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                padding: "16px 20px",
+                borderRadius: 14,
+                border: "1px solid #e2e8f0",
+                background: "#ffffff",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
+                transition: "all 0.15s ease",
+              }}
+              className="hover:border-blue-400 hover:shadow-md"
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#007ed5",
+                  color: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  boxShadow: "0 2px 8px rgba(0, 126, 213, 0.25)",
+                }}
+              >
+                <Laptop24Regular />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Text weight="semibold" style={{ display: "block", color: "#1e293b", fontSize: 14.5 }}>
+                  Add IT Asset
+                </Text>
+                <span style={{ fontSize: 12, color: "#64748b" }}>
+                  Laptops, peripherals & hardware inventory
+                </span>
+              </div>
+              <ChevronRightRegular style={{ color: "#64748b", fontSize: 18 }} />
+            </div>
+
+            {/* Action 2: Add Non-IT Asset */}
+            <div
+              id="btn-quick-add-non-it-asset"
+              onClick={() => setAddNonITAssetOpen(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -349,9 +399,14 @@ const AdminDashboard: React.FC = () => {
               >
                 <AddCircleRegular />
               </div>
-              <Text weight="semibold" style={{ flex: 1, color: "#1e293b", fontSize: 14.5 }}>
-                Add Asset
-              </Text>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Text weight="semibold" style={{ display: "block", color: "#1e293b", fontSize: 14.5 }}>
+                  Add Non-IT Asset
+                </Text>
+                <span style={{ fontSize: 12, color: "#64748b" }}>
+                  Furniture, facilities & physical assets
+                </span>
+              </div>
               <ChevronRightRegular style={{ color: "#64748b", fontSize: 18 }} />
             </div>
 
@@ -409,6 +464,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Action 3: Add Asset to Employee */}
             <div
+              id="btn-quick-add-asset-to-emp"
               onClick={() => setAssignAssetOpen(true)}
               style={{
                 display: "flex",
@@ -649,11 +705,23 @@ const AdminDashboard: React.FC = () => {
         </Dialog>
       )}
 
-      {/* Add Asset Slide-over drawer */}
+      {/* Add IT Asset Slide-over drawer */}
       {currentUser?.userID && (
         <AssetFormDialog
           open={addAssetOpen}
           onOpenChange={setAddAssetOpen}
+          asset={null}
+          currentUserId={currentUser.userID}
+          onSaved={loadData}
+          onAssetChanged={() => loadData()}
+        />
+      )}
+
+      {/* Add Non-IT Asset Slide-over drawer */}
+      {currentUser?.userID && (
+        <NonITAssetFormDialog
+          open={addNonITAssetOpen}
+          onOpenChange={setAddNonITAssetOpen}
           asset={null}
           currentUserId={currentUser.userID}
           onSaved={loadData}

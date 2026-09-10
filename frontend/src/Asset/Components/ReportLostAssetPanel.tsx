@@ -180,97 +180,209 @@ const ReportLostAssetPanel: React.FC<ReportLostAssetPanelProps> = ({
           </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody>
-        <div style={{ paddingTop: "8px", paddingBottom: "24px", display: "flex", flexDirection: "column", gap: "4px" }}>
-          <Text size={300} style={{ color: "#605E5C" }}>
-            For <strong>{employeeName}</strong>
-          </Text>
-
+      <DrawerBody style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Employee Card */}
           <div
             style={{
-              marginTop: "12px",
+              background: "#F8FAFC",
+              border: "1px solid #E2E8F0",
+              borderRadius: "16px",
+              padding: "16px 20px",
               display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              padding: "12px",
-              border: "1px solid #E1DFDD",
-              borderRadius: "10px",
-              background: "#FAFAFA",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
+            <div>
+              <div style={{ fontSize: "11.5px", color: "#64748B", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Affected Employee
+              </div>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", marginTop: "2px" }}>
+                {employeeName}
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "11.5px",
+                fontWeight: 700,
+                background: "#FEF2F2",
+                color: "#EF4444",
+                padding: "4px 12px",
+                borderRadius: "9999px",
+                border: "1px solid #FECACA",
+              }}
+            >
+              {assets.length} Asset{assets.length === 1 ? "" : "s"} Affected
+            </span>
+          </div>
+
+          {/* Assets Section Card */}
+          <div
+            style={{
+              background: "#F8FAFC",
+              borderRadius: "16px",
+              border: "1px solid #E2E8F0",
+              padding: "18px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Text weight="bold" style={{ color: "#0F172A", fontSize: 13.5 }}>
+                Selected Hardware
+              </Text>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#64748B" }}>
+                To be marked Lost
+              </span>
+            </div>
+
             {assets.map((asset) => (
-              <div key={asset.MappingID} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-                  <TruncatedText text={`${asset.Category} — ${asset.AssetName} (${asset.AssetTagID})`} weight="medium" size={200} />
+              <div
+                key={asset.MappingID}
+                style={{
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: "12px",
+                  padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontWeight: 600, fontSize: "14px", color: "#0F172A" }}>
+                    {asset.AssetName}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "11.5px",
+                      background: "#F1F5F9",
+                      color: "#475569",
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {asset.AssetTagID}
+                  </span>
+                </div>
+                <div style={{ fontSize: "12.5px", color: "#64748B" }}>
+                  Category: {asset.Category}
                 </div>
                 {reportedByRole === "Admin" && (
-                  <Dropdown
-                    placeholder="Assign replacement now (optional)"
-                    mountNode={mountNode}
-                    size="small"
-                    value={
-                      availableByCategory[asset.Category]?.find((o) => o.ID === replacementByAsset[asset.AssetID])?.AssetName ?? ""
-                    }
-                    onOptionSelect={(_, d) =>
-                      setReplacementByAsset((prev) => ({ ...prev, [asset.AssetID]: d.optionValue ?? "" }))
-                    }
-                  >
-                    {(availableByCategory[asset.Category] ?? []).length === 0 ? (
-                      <Option key="none" value="" text={`No in-stock assets available for ${asset.Category}`} disabled>
-                        No in-stock assets available for {asset.Category}
-                      </Option>
-                    ) : (
-                      availableByCategory[asset.Category].map((option) => (
-                        <Option key={option.ID} value={option.ID} text={option.AssetName}>
-                          {option.AssetName} ({option.AssetTagID})
+                  <div style={{ marginTop: "4px" }}>
+                    <Dropdown
+                      placeholder="Assign replacement now (optional)"
+                      mountNode={mountNode}
+                      size="small"
+                      style={{ width: "100%", borderRadius: "8px" }}
+                      value={
+                        availableByCategory[asset.Category]?.find((o) => o.ID === replacementByAsset[asset.AssetID])?.AssetName ?? ""
+                      }
+                      onOptionSelect={(_, d) =>
+                        setReplacementByAsset((prev) => ({ ...prev, [asset.AssetID]: d.optionValue ?? "" }))
+                      }
+                    >
+                      {(availableByCategory[asset.Category] ?? []).length === 0 ? (
+                        <Option key="none" value="" text={`No in-stock assets available for ${asset.Category}`} disabled>
+                          No in-stock assets available for {asset.Category}
                         </Option>
-                      ))
-                    )}
-                  </Dropdown>
+                      ) : (
+                        availableByCategory[asset.Category].map((option) => (
+                          <Option key={option.ID} value={option.ID} text={option.AssetName}>
+                            {option.AssetName} ({option.AssetTagID})
+                          </Option>
+                        ))
+                      )}
+                    </Dropdown>
+                  </div>
                 )}
               </div>
             ))}
           </div>
 
-          <Divider style={{ margin: "16px 0" }} />
+          {/* Incident Details Card */}
+          <div
+            style={{
+              background: "#F8FAFC",
+              borderRadius: "16px",
+              border: "1px solid #E2E8F0",
+              padding: "18px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Text weight="bold" style={{ color: "#0F172A", fontSize: 13.5 }}>
+                Incident Information
+              </Text>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "#EF4444", background: "#FEF2F2", padding: "2px 8px", borderRadius: 9999 }}>
+                Required
+              </span>
+            </div>
 
-          <Field label="Date Lost" required>
-            <Input type="date" value={lostDate} onChange={(_, d) => setLostDate(d.value)} />
-          </Field>
+            <div>
+              <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                Date Lost <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <Input
+                type="date"
+                style={{ width: "100%", borderRadius: 10, background: "#FFFFFF" }}
+                value={lostDate}
+                onChange={(_, d) => setLostDate(d.value)}
+              />
+            </div>
 
-          <Field label="How was it lost?" required style={{ marginTop: "12px" }}>
-            <Input placeholder="e.g. Left in a cab, stolen from bag, misplaced while traveling..." value={howLost} onChange={(_, d) => setHowLost(d.value)} />
-          </Field>
+            <div>
+              <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                How was it lost? <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <Input
+                style={{ width: "100%", borderRadius: 10, background: "#FFFFFF" }}
+                placeholder="e.g. Left in a cab, stolen from bag, misplaced while traveling..."
+                value={howLost}
+                onChange={(_, d) => setHowLost(d.value)}
+              />
+            </div>
 
-          <Field label="Additional Details (Optional)" style={{ marginTop: "12px" }}>
-            <Textarea
-              placeholder="Any other relevant information..."
-              resize="vertical"
-              rows={4}
-              value={additionalDetails}
-              onChange={(_, d) => setAdditionalDetails(d.value)}
-            />
-          </Field>
+            <div>
+              <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                Additional Details (Optional)
+              </label>
+              <Textarea
+                style={{ width: "100%", borderRadius: 10, background: "#FFFFFF" }}
+                placeholder="Any other relevant information (police report, transit details, etc.)..."
+                resize="vertical"
+                rows={3}
+                value={additionalDetails}
+                onChange={(_, d) => setAdditionalDetails(d.value)}
+              />
+            </div>
+          </div>
 
           {reportedByRole === "Admin" && (
-            <div style={{ marginTop: "12px", padding: "10px 12px", borderRadius: "8px", background: "#FFF4CE", border: "1px solid #F2C811", display: "flex", gap: "8px" }}>
-              <WarningRegular style={{ color: "#7A5D00", flexShrink: 0 }} />
-              <Text size={200} style={{ color: "#7A5D00" }}>
+            <div style={{ padding: "12px 14px", borderRadius: "12px", background: "#FFFBEB", border: "1px solid #FDE68A", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <WarningRegular style={{ color: "#D97706", fontSize: "18px", flexShrink: 0, marginTop: "2px" }} />
+              <Text size={200} style={{ color: "#92400E", lineHeight: 1.4 }}>
                 This will immediately mark the selected asset(s) as Lost. Assets left without a replacement chosen will wait
                 here until stock is available.
               </Text>
             </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #E2E8F0" }}>
-            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={submitting} style={{ borderRadius: "9999px", padding: "8px 22px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "12px", paddingTop: "16px", borderTop: "1px solid #E2E8F0" }}>
+            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={submitting} style={{ borderRadius: "25px", padding: "8px 22px" }}>
               Cancel
             </Button>
             <Button
               appearance="primary"
               style={{
                 background: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
-                borderRadius: "9999px",
+                borderRadius: "25px",
                 padding: "8px 24px",
                 fontWeight: 600,
                 boxShadow: "0 2px 8px rgba(239, 68, 68, 0.25)",

@@ -201,7 +201,7 @@ const UpgradeRequestList: React.FC<UpgradeRequestListProps> = ({ requests, role,
       {filteredRequests.length === 0 ? (
         <Text style={{ color: "#64748b", padding: "20px 0" }}>No requests match this filter.</Text>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "20px" }}>
             {filteredRequests.map((request) => {
               const canManagerAct = role === "manager" && request.ManagerApprovalStatus === "Pending";
               const canAdminAct = role === "admin" && request.AdminApprovalStatus === "Pending";
@@ -213,61 +213,115 @@ const UpgradeRequestList: React.FC<UpgradeRequestListProps> = ({ requests, role,
                 return (
                   <div
                     key={request.ID}
-                    className="quadra-glass-card hover:shadow-lg transition-all duration-200"
-                    style={{ padding: "18px", borderRadius: "14px" }}
+                    style={{
+                      background: "#FFFFFF",
+                      border: "1px solid #E2E8F0",
+                      borderRadius: "20px",
+                      padding: "22px 24px",
+                      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.03)",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: "16px",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.07)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.03)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
                         <div
                           style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "10px",
-                            background: "#FFF4CE",
+                            width: "42px",
+                            height: "42px",
+                            borderRadius: "12px",
+                            background: "#FEF3C7",
+                            color: "#D97706",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            fontSize: "20px",
                             flexShrink: 0,
                           }}
                         >
-                          <DeveloperBoardRegular fontSize={18} style={{ color: "#B8860B" }} />
+                          <DeveloperBoardRegular />
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <TruncatedText text={request.RequestNumber} weight="semibold" />
-                          <TruncatedText
-                            text={`${request.CategoryName} · ${request.ComponentDisplayName}`}
-                            size={200}
-                            color="#64748b"
-                          />
+                          <div style={{ fontSize: "15.5px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.01em" }}>
+                            {request.RequestNumber}
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#64748B", marginTop: "2px", fontWeight: 500 }}>
+                            {request.CategoryName} · {request.ComponentDisplayName}
+                          </div>
                         </div>
                       </div>
-                      <Badge appearance="tint" color={STATUS_COLOR[request.ReqStatus]}>
+                      <Badge
+                        appearance="tint"
+                        color={STATUS_COLOR[request.ReqStatus]}
+                        style={{ borderRadius: "25px", padding: "4px 12px", fontWeight: 600, fontSize: "12px" }}
+                      >
                         {STATUS_LABEL[request.ReqStatus] ?? request.ReqStatus}
                       </Badge>
                     </div>
+
+                    {/* Spec comparison box */}
+                    <div
+                      style={{
+                        background: "#F8FAFC",
+                        border: "1px solid #F1F5F9",
+                        borderRadius: "14px",
+                        padding: "12px 16px",
+                        fontSize: "13px",
+                        color: "#334155",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={{ color: "#64748B" }}>Current:</span>
+                        <span style={{ fontWeight: 600, color: "#1E293B" }}>{request.CurrentSpecification}</span>
+                        <span style={{ color: "#007ED5", fontWeight: 700 }}>→</span>
+                        <span style={{ color: "#64748B" }}>Requested:</span>
+                        <span style={{ fontWeight: 700, color: "#007ED5" }}>{request.RequiredSpecfication}</span>
+                      </div>
+                    </div>
+
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginTop: "14px",
-                        paddingTop: "12px",
-                        borderTop: "1px solid rgba(226, 232, 240, 0.7)",
+                        paddingTop: "14px",
+                        borderTop: "1px solid #F1F5F9",
                       }}
                     >
-                      <Text size={200} style={{ color: "#64748b" }}>
+                      <Text size={200} style={{ color: "#64748b", fontWeight: 500 }}>
                         {formatDate(request.RequestedDate ?? request.CreatedAt)}
                       </Text>
                       {request.ReqStatus === "ManagerReprogress" || request.ReqStatus === "AdminReprogress" ? (
                         <Button
                           appearance="primary"
-                          style={{ background: "#007ED5", borderColor: "#007ED5", borderRadius: "8px" }}
+                          style={{
+                            background: "#007ED5",
+                            borderColor: "#007ED5",
+                            borderRadius: "25px",
+                            padding: "6px 20px",
+                            fontWeight: 600,
+                          }}
                           onClick={() => setDetailsRequest(request)}
                         >
                           Respond →
                         </Button>
                       ) : (
-                        <Button appearance="subtle" style={{ color: "#007ED5", borderRadius: "8px" }} onClick={() => setDetailsRequest(request)}>
+                        <Button
+                          appearance="subtle"
+                          style={{ color: "#007ED5", borderRadius: "25px", fontWeight: 600 }}
+                          onClick={() => setDetailsRequest(request)}
+                        >
                           View Details →
                         </Button>
                       )}
@@ -279,136 +333,284 @@ const UpgradeRequestList: React.FC<UpgradeRequestListProps> = ({ requests, role,
               return (
                 <div
                   key={request.ID}
-                  className="quadra-glass-card hover:shadow-lg transition-all duration-200"
-                  style={{ padding: "18px", borderRadius: "14px" }}
+                  style={{
+                    background: "#FFFFFF",
+                    border: "1px solid #E2E8F0",
+                    borderRadius: "20px",
+                    padding: "22px 24px",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.03)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.07)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.03)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "10px",
-                          background: "#FFF4CE",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <DeveloperBoardRegular fontSize={18} style={{ color: "#B8860B" }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {/* Header Row */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "12px",
+                            background: "#FEF3C7",
+                            color: "#D97706",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "22px",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <DeveloperBoardRegular />
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.01em" }}>
+                            {request.RequestNumber}
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#64748B", marginTop: "2px", fontWeight: 500 }}>
+                            {request.CategoryName} · {request.ComponentDisplayName}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <TruncatedText text={request.RequestNumber} weight="semibold" />
-                        <TruncatedText
-                          text={`${request.CategoryName} · ${request.ComponentDisplayName}`}
-                          size={200}
-                          color="#605E5C"
-                        />
+                      <Badge
+                        appearance="tint"
+                        color={STATUS_COLOR[request.ReqStatus]}
+                        style={{ borderRadius: "25px", padding: "4px 12px", fontWeight: 600, fontSize: "12px", whiteSpace: "nowrap" }}
+                      >
+                        {STATUS_LABEL[request.ReqStatus] ?? request.ReqStatus}
+                      </Badge>
+                    </div>
+
+                    {/* Requester & Date Bar */}
+                    <div style={{ fontSize: "13px", color: "#64748B", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <span>Requested by</span>
+                      <strong style={{ color: "#1E293B" }}>{request.RequestedByName ?? "Unknown"}</strong>
+                      <span>•</span>
+                      <span>{formatDate(request.RequestedDate ?? request.CreatedAt)}</span>
+                    </div>
+
+                    {/* Spec Change Box */}
+                    <div
+                      style={{
+                        background: "#F8FAFC",
+                        border: "1px solid #F1F5F9",
+                        borderRadius: "14px",
+                        padding: "12px 16px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={{ color: "#64748B", fontSize: "12px", textTransform: "uppercase", fontWeight: 600 }}>Current:</span>
+                        <span style={{ fontWeight: 600, color: "#1E293B" }}>{request.CurrentSpecification}</span>
+                        <span style={{ color: "#007ED5", fontWeight: 700 }}>→</span>
+                        <span style={{ color: "#64748B", fontSize: "12px", textTransform: "uppercase", fontWeight: 600 }}>Requested:</span>
+                        <span style={{ fontWeight: 700, color: "#007ED5" }}>{request.RequiredSpecfication}</span>
                       </div>
                     </div>
-                    <Badge appearance="tint" color={STATUS_COLOR[request.ReqStatus]}>
-                      {STATUS_LABEL[request.ReqStatus] ?? request.ReqStatus}
-                    </Badge>
+
+                    {request.ReasonForUpgrade && (
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#475569",
+                          lineHeight: 1.5,
+                          background: "#FFFFFF",
+                          border: "1px solid #E2E8F0",
+                          borderRadius: "12px",
+                          padding: "10px 14px",
+                        }}
+                      >
+                        <strong style={{ color: "#1E293B" }}>Reason: </strong>
+                        {request.ReasonForUpgrade}
+                      </div>
+                    )}
+
+                    {request.IsAdminOverride && (
+                      <Badge appearance="outline" color="warning" size="small" style={{ borderRadius: "25px", alignSelf: "flex-start" }}>
+                        Manager Approval Overridden
+                      </Badge>
+                    )}
+
+                    {isOverrideNeeded && (
+                      <div style={{ fontSize: "12px", color: "#B8860B", background: "#FEF9C3", padding: "8px 12px", borderRadius: "10px" }}>
+                        Manager status: {request.ManagerApprovalStatus === "Pending" ? "not yet decided" : request.ManagerApprovalStatus}. Approving now will override the Manager gate.
+                      </div>
+                    )}
                   </div>
 
-                  <TruncatedText
-                    text={`Requested by ${request.RequestedByName ?? "Unknown"} on ${formatDate(request.RequestedDate ?? request.CreatedAt)}`}
-                    size={200}
-                    color="#605E5C"
-                    style={{ marginTop: "10px" }}
-                  />
-                  <Text size={200} style={{ display: "block", marginTop: "6px" }}>
-                    Current: {request.CurrentSpecification} → Requested: {request.RequiredSpecfication}
-                  </Text>
-                  {request.ReasonForUpgrade && (
-                    <Text size={200} style={{ color: "#605E5C", display: "block", marginTop: "6px" }}>
-                      Reason: {request.ReasonForUpgrade}
-                    </Text>
-                  )}
-                  {request.IsAdminOverride && (
-                    <Badge appearance="outline" color="warning" size="small" style={{ marginTop: "8px" }}>
-                      Manager Approval Overridden
-                    </Badge>
-                  )}
-
-                  {isOverrideNeeded && (
-                    <Text size={200} style={{ color: "#B8860B", display: "block", marginTop: "8px" }}>
-                      Manager status: {request.ManagerApprovalStatus === "Pending" ? "not yet decided" : request.ManagerApprovalStatus}
-                      . Approving now will override the Manager gate.
-                    </Text>
-                  )}
-
+                  {/* Actions Row */}
                   {!reprogressing && (
                     <div
                       style={{
                         display: "flex",
-                        justifyContent: (canManagerAct || canAdminAct) ? "space-between" : "flex-end",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: "8px",
-                        marginTop: "12px",
-                        paddingTop: "10px",
-                        borderTop: "1px solid #F3F2F1",
+                        gap: "10px",
+                        paddingTop: "14px",
+                        borderTop: "1px solid #F1F5F9",
+                        flexWrap: "wrap",
                       }}
                     >
-                      <Button appearance="transparent" style={{ color: "#007ED5" }} onClick={() => setDetailsRequest(request)}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailsRequest(request)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#007ED5",
+                          fontSize: "13.5px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          padding: "6px 4px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
                         View Details →
-                      </Button>
+                      </button>
+
                       {(canManagerAct || canAdminAct) && (
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <Button
-                            appearance="outline"
-                            icon={<ArrowUndoRegular />}
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                          <button
+                            type="button"
                             disabled={acting}
                             onClick={() => {
                               setReprogressId(request.ID);
                               setReprogressReason("");
                             }}
+                            style={{
+                              background: "#FFFFFF",
+                              border: "1px solid #CBD5E1",
+                              borderRadius: "25px",
+                              padding: "7px 16px",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              color: "#475569",
+                              cursor: acting ? "not-allowed" : "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "#FFFFFF")}
                           >
-                            Send Back
-                          </Button>
-                          <Button
-                            appearance="outline"
-                            icon={<DismissCircleRegular />}
+                            <ArrowUndoRegular style={{ fontSize: "14px" }} />
+                            <span>Send Back</span>
+                          </button>
+
+                          <button
+                            type="button"
                             disabled={acting}
                             onClick={() => handleAction(request, "Reject")}
+                            style={{
+                              background: "#FEF2F2",
+                              border: "1px solid #FECACA",
+                              borderRadius: "25px",
+                              padding: "7px 16px",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              color: "#DC2626",
+                              cursor: acting ? "not-allowed" : "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#FEE2E2")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "#FEF2F2")}
                           >
-                            Reject
-                          </Button>
-                          <Button
-                            appearance="primary"
-                            icon={acting ? <Spinner size="tiny" /> : <CheckmarkCircleRegular />}
+                            <DismissCircleRegular style={{ fontSize: "14px" }} />
+                            <span>Reject</span>
+                          </button>
+
+                          <button
+                            type="button"
                             disabled={acting}
                             onClick={() => handleAction(request, "Approve")}
+                            style={{
+                              background: "#16A34A",
+                              border: "none",
+                              borderRadius: "25px",
+                              padding: "7px 20px",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              color: "#FFFFFF",
+                              cursor: acting ? "not-allowed" : "pointer",
+                              boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#15803D")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "#16A34A")}
                           >
-                            {isOverrideNeeded ? "Override & Approve" : "Approve"}
-                          </Button>
+                            {acting ? <Spinner size="tiny" /> : <CheckmarkCircleRegular style={{ fontSize: "14px" }} />}
+                            <span>{isOverrideNeeded ? "Override & Approve" : "Approve"}</span>
+                          </button>
                         </div>
                       )}
                     </div>
                   )}
 
                   {(canManagerAct || canAdminAct) && reprogressing && (
-                    <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px solid #F3F2F1", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #F1F5F9", display: "flex", flexDirection: "column", gap: "10px" }}>
                       <Textarea
                         placeholder="What additional information is needed from the requestor?"
                         value={reprogressReason}
                         onChange={(_, d) => setReprogressReason(d.value)}
                         rows={3}
+                        style={{ borderRadius: "12px" }}
                       />
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                        <Button appearance="secondary" size="small" disabled={acting} onClick={() => setReprogressId(null)}>
-                          Cancel
-                        </Button>
-                        <Button
-                          appearance="primary"
-                          size="small"
-                          disabled={acting || !reprogressReason.trim()}
-                          icon={acting ? <Spinner size="tiny" /> : undefined}
-                          onClick={() => handleReprogress(request, reprogressReason)}
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => setReprogressId(null)}
+                          style={{
+                            background: "#FFFFFF",
+                            border: "1px solid #CBD5E1",
+                            borderRadius: "25px",
+                            padding: "6px 18px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "#475569",
+                            cursor: "pointer",
+                          }}
                         >
-                          Send Back
-                        </Button>
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={acting || !reprogressReason.trim()}
+                          onClick={() => handleReprogress(request, reprogressReason)}
+                          style={{
+                            background: "#007ED5",
+                            border: "none",
+                            borderRadius: "25px",
+                            padding: "6px 20px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "#FFFFFF",
+                            cursor: acting || !reprogressReason.trim() ? "not-allowed" : "pointer",
+                            boxShadow: "0 2px 6px rgba(0, 126, 213, 0.25)",
+                          }}
+                        >
+                          {acting ? <Spinner size="tiny" /> : "Send Back"}
+                        </button>
                       </div>
                     </div>
                   )}

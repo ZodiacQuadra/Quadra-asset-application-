@@ -52,8 +52,8 @@ function AssetRoutes() {
         <Route path="/Asset/home" element={<RoleDashboardRedirect />} />
         <Route path="/Asset/dashboard" element={<AdminDashboard />} />
         <Route path="/Asset/inventory" element={<AssetInventory />} />
-        <Route path="/Asset/inventory/:id" element={<AssetDetail />} />
-        <Route path="/Asset/:id" element={<AssetDetail />} />
+        <Route path="/Asset/inventory/:id" element={<EmployeeMyAssetDetail />} />
+        <Route path="/Asset/:id" element={<EmployeeMyAssetDetail />} />
         <Route path="/Asset/my-assets" element={<EmployeeMyAssets />} />
         <Route path="/Asset/my-assets/:id" element={<EmployeeMyAssetDetail />} />
         <Route path="/Asset/my-assets/:assetId" element={<EmployeeMyAssetDetail />} />

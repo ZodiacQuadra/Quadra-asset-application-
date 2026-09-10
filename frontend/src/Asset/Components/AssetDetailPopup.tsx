@@ -8,6 +8,7 @@ import { AssetInventoryRecord, AssetStatus } from "../Services/AssetInventorySer
 const STATUS_COLOR: Record<AssetStatus, "success" | "warning" | "informative" | "danger" | "brand"> = {
   "In Stock": "success",
   Assigned: "informative",
+  "In Use": "informative",
   "Under Maintenance": "warning",
   "End of Use": "danger",
   Reserved: "brand",

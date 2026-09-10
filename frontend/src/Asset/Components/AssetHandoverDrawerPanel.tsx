@@ -93,7 +93,7 @@ export const AssetHandoverDrawerPanel: React.FC<AssetHandoverDrawerPanelProps> =
       await createAssetHandoverRequest({
         requestedByUserId: currentUser.userID,
         requestedByName: currentUser.displayName ?? undefined,
-        requestedByMail: currentUser.mailID ?? undefined,
+        requestedByMail: currentUser.email ?? undefined,
         reason,
         additionalNotes: additionalNotes.trim() || undefined,
         assetIds: [assetId],
@@ -277,14 +277,18 @@ export const AssetHandoverDrawerPanel: React.FC<AssetHandoverDrawerPanelProps> =
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-end",
+            justifyContent: "space-between",
             gap: "12px",
             marginTop: "auto",
             paddingTop: "16px",
             borderTop: "1px solid #E2E8F0",
           }}
         >
-          <Button appearance="secondary" onClick={() => onOpenChange(false)}>
+          <Button
+            appearance="secondary"
+            onClick={() => onOpenChange(false)}
+            style={{ borderRadius: "20px", padding: "8px 20px" }}
+          >
             Cancel
           </Button>
           <Button
@@ -292,9 +296,11 @@ export const AssetHandoverDrawerPanel: React.FC<AssetHandoverDrawerPanelProps> =
             disabled={submitting}
             onClick={handleSubmit}
             style={{
-              background: "linear-gradient(135deg, #007ED5 0%, #0066B3 100%)",
+              background: "#007ED5",
               fontWeight: 600,
-              padding: "8px 20px",
+              padding: "8px 22px",
+              borderRadius: "20px",
+              boxShadow: "0 2px 6px rgba(0,126,213,0.25)",
             }}
           >
             {submitting ? <Spinner size="tiny" label="Submitting..." /> : "Submit Handover Request"}

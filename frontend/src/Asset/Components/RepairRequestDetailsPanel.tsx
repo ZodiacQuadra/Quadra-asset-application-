@@ -1,39 +1,96 @@
 import React, { useEffect, useState } from "react";
-import { Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, Button, Text, Badge, Divider, Textarea, Spinner, Toast, ToastTitle, Toaster, useToastController, useId } from "@fluentui/react-components";
-import { Dismiss24Regular, WrenchRegular, CheckmarkCircleRegular, DismissCircleRegular, WarningRegular, ArrowUndoRegular } from "@fluentui/react-icons";
-import TruncatedText from "../../Common/TruncatedText";
+import {
+  Drawer,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  DrawerBody,
+  Button,
+  Text,
+  Badge,
+  Textarea,
+  Spinner,
+  Toast,
+  ToastTitle,
+  Toaster,
+  useToastController,
+  useId,
+} from "@fluentui/react-components";
+import {
+  Dismiss24Regular,
+  WrenchRegular,
+  CheckmarkCircleRegular,
+  DismissCircleRegular,
+  WarningRegular,
+  ArrowUndoRegular,
+  DocumentBulletListRegular,
+  AttachRegular,
+} from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import {
   AssetRepairRequestRecord,
   getRepairReprogressHistory,
   respondToRepairReprogress,
+  adminActionOnRepairRequest,
+  adminReprogressRepairRequest,
   RepairAdminReprogressRecord,
 } from "../Services/AssetRepairRequestService";
+import {
+  DrawerTopIdentityCard,
+  InfoCardGroup,
+  InfoRow,
+  OptionCard,
+  DecisionContainer,
+  DecisionSummaryCard,
+  DecisionOptionDef,
+} from "./RequestDrawerComponents";
 
-const STATUS_COLOR: Record<string, "warning" | "success" | "danger"> = {
-  Pending: "warning",
-  Approved: "success",
-  Rejected: "danger",
-  Unrepairable: "danger",
-  "Re-Progress": "warning",
+const formatDateTime = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
+
+type RepairDecisionChoice = "Approve" | "Unrepairable" | "Reject" | "Reprogress";
+
+const REPAIR_DECISION_OPTIONS: Record<RepairDecisionChoice, DecisionOptionDef> = {
+  Approve: {
+    kind: "Approve",
+    label: "Approve & Authorize Maintenance",
+    description: "Approve repair and authorize maintenance service or technician handling",
+    icon: <CheckmarkCircleRegular />,
+    accent: "#059669",
+    iconBg: "#ECFDF5",
+    activeBg: "#F0FDF4",
+    activeBorder: "#10B981",
+  },
+  Unrepairable: {
+    kind: "Unrepairable",
+    label: "Mark Beyond Repair (Unrepairable)",
+    description: "Decommission damaged device and automatically generate replacement request",
+    icon: <WarningRegular />,
+    accent: "#7C3AED",
+    iconBg: "#F5F3FF",
+    activeBg: "#FAF5FF",
+    activeBorder: "#8B5CF6",
+  },
+  Reject: {
+    kind: "Reject",
+    label: "Reject Service Request",
+    description: "Decline repair requisition with a mandatory audit explanation",
+    icon: <DismissCircleRegular />,
+    accent: "#DC2626",
+    iconBg: "#FEF2F2",
+    activeBg: "#FEF2F2",
+    activeBorder: "#EF4444",
+  },
+  Reprogress: {
+    kind: "Reprogress",
+    label: "Request Information (Reprogress)",
+    description: "Send back to employee requesting additional diagnostic clarification or photos",
+    icon: <ArrowUndoRegular />,
+    accent: "#D97706",
+    iconBg: "#FFFBEB",
+    activeBg: "#FFFBEB",
+    activeBorder: "#F59E0B",
+  },
 };
-
-const formatDateTime = (value: string | null | undefined) => (value ? new Date(value).toLocaleString("en-IN") : "-");
-
-const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", gap: "16px" }}>
-    <Text size={200} style={{ color: "#605E5C", flexShrink: 0 }}>
-      {label}
-    </Text>
-    <TruncatedText text={value} size={200} weight="medium" maxWidth="260px" style={{ textAlign: "right" }} />
-  </div>
-);
-
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Text weight="semibold" style={{ display: "block", marginTop: "20px", marginBottom: "6px" }}>
-    {children}
-  </Text>
-);
 
 interface RepairRequestDetailsPanelProps {
   open: boolean;
@@ -46,35 +103,35 @@ interface RepairRequestDetailsPanelProps {
   onUnrepairable?: (note: string) => void;
   onReprogress?: (reason: string) => void;
   onRespondComplete?: () => void;
+  onActionComplete?: () => void;
 }
 
-// Detail view for a Repair Request — same InfoRow/SectionTitle layout
-// convention as AssetRequestDetailsPanel (the Employee Request panel).
-// Repair Requests go straight to Admin (no Manager stage). When Admin opens
-// this from a Pending request, the same Approve/Reject/Send Back actions
-// available on the card also appear here — the card's own buttons are
-// unchanged and kept as-is, this is just an additional place to act from.
-// The employee's own response to a reprogressed request is handled entirely
-// within this panel (fetches its own reprogress history, submits directly).
 const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
   open,
   onOpenChange,
   request,
-  role,
-  acting,
+  role = "admin",
+  acting: externalActing,
   onApprove,
   onReject,
   onUnrepairable,
   onReprogress,
   onRespondComplete,
+  onActionComplete,
 }) => {
   const { currentUser } = useAuth();
   const toasterId = useId("repair-request-details-toaster");
   const { dispatchToast } = useToastController(toasterId);
 
-  const [noteMode, setNoteMode] = useState<"Reject" | "Unrepairable" | "Reprogress" | null>(null);
-  const [noteText, setNoteText] = useState("");
+  // Decision State
+  const [selectedDecision, setSelectedDecision] = useState<RepairDecisionChoice>("Approve");
+  const [vendorNote, setVendorNote] = useState("");
+  const [unrepairableNote, setUnrepairableNote] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [reprogressReason, setReprogressReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Employee Reprogress State
   const needsEmployeeResponse = role === "employee" && request?.RequestStatus === "Re-Progress";
   const [pendingReprogress, setPendingReprogress] = useState<RepairAdminReprogressRecord | null>(null);
   const [problem, setProblem] = useState("");
@@ -83,8 +140,11 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
 
   useEffect(() => {
     if (open) {
-      setNoteMode(null);
-      setNoteText("");
+      setSelectedDecision("Approve");
+      setVendorNote("");
+      setUnrepairableNote("");
+      setRejectionReason("");
+      setReprogressReason("");
       setPendingReprogress(null);
       setEmployeeResponse("");
     }
@@ -92,14 +152,115 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
       setProblem(request.Problem);
       getRepairReprogressHistory(request.ID)
         .then((history) => setPendingReprogress(history.find((h) => h.ReprogressStatus === "Pending") ?? null))
-        .catch(() => {
-          /* non-blocking — the reason banner just won't show if this fails */
-        });
+        .catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, request?.ID, request?.RequestStatus]);
+  }, [open, request?.ID, request?.RequestStatus, needsEmployeeResponse]);
 
-  const handleSubmitResponse = async () => {
+  if (!request) return null;
+
+  const isPending = request.RequestStatus === "Pending" || request.RequestStatus === "Re-Progress";
+  const isActionable = role === "admin" && isPending;
+  const isActing = externalActing || isSubmitting;
+  const attachmentFiles = Array.isArray(request.AttachmentURL) ? request.AttachmentURL : [];
+
+  const handleDecisionSubmit = async () => {
+    if (!currentUser?.userID) return;
+    setIsSubmitting(true);
+
+    try {
+      if (selectedDecision === "Approve") {
+        if (onApprove) {
+          onApprove();
+        } else {
+          await adminActionOnRepairRequest(
+            request.ID,
+            "Approve",
+            currentUser.userID,
+            currentUser.displayName,
+            currentUser.email,
+            vendorNote || undefined
+          );
+        }
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Repair request authorized successfully</ToastTitle>
+          </Toast>,
+          { intent: "success" }
+        );
+      } else if (selectedDecision === "Unrepairable") {
+        if (onUnrepairable) {
+          onUnrepairable(unrepairableNote);
+        } else {
+          await adminActionOnRepairRequest(
+            request.ID,
+            "Unrepairable",
+            currentUser.userID,
+            currentUser.displayName,
+            currentUser.email,
+            unrepairableNote
+          );
+        }
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Asset marked unrepairable. Replacement requested.</ToastTitle>
+          </Toast>,
+          { intent: "success" }
+        );
+      } else if (selectedDecision === "Reject") {
+        if (onReject) {
+          onReject(rejectionReason);
+        } else {
+          await adminActionOnRepairRequest(
+            request.ID,
+            "Reject",
+            currentUser.userID,
+            currentUser.displayName,
+            currentUser.email,
+            rejectionReason
+          );
+        }
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Repair request rejected</ToastTitle>
+          </Toast>,
+          { intent: "success" }
+        );
+      } else if (selectedDecision === "Reprogress") {
+        if (onReprogress) {
+          onReprogress(reprogressReason);
+        } else {
+          await adminReprogressRepairRequest(
+            request.ID,
+            reprogressReason,
+            currentUser.userID,
+            currentUser.displayName,
+            currentUser.email
+          );
+        }
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Requisition sent back for clarification</ToastTitle>
+          </Toast>,
+          { intent: "info" }
+        );
+      }
+
+      onActionComplete?.();
+      onRespondComplete?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      dispatchToast(
+        <Toast>
+          <ToastTitle>{error?.message || "Failed to record repair decision"}</ToastTitle>
+        </Toast>,
+        { intent: "error" }
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEmployeeSubmitResponse = async () => {
     if (!request || !currentUser?.userID || !pendingReprogress) return;
     setSubmittingResponse(true);
     try {
@@ -109,16 +270,17 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
       });
       dispatchToast(
         <Toast>
-          <ToastTitle>Response submitted</ToastTitle>
+          <ToastTitle>Response submitted successfully</ToastTitle>
         </Toast>,
         { intent: "success" }
       );
       onRespondComplete?.();
+      onActionComplete?.();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       dispatchToast(
         <Toast>
-          <ToastTitle>{error instanceof Error ? error.message : "Failed to submit response"}</ToastTitle>
+          <ToastTitle>{error?.message || "Failed to submit response"}</ToastTitle>
         </Toast>,
         { intent: "error" }
       );
@@ -127,7 +289,13 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
     }
   };
 
-  const canAct = role === "admin" && request?.RequestStatus === "Pending";
+  const isSubmitDisabled =
+    isActing ||
+    (selectedDecision === "Unrepairable" && !unrepairableNote.trim()) ||
+    (selectedDecision === "Reject" && !rejectionReason.trim()) ||
+    (selectedDecision === "Reprogress" && !reprogressReason.trim());
+
+  const currentOptionDef = REPAIR_DECISION_OPTIONS[selectedDecision];
 
   return (
     <Drawer
@@ -136,211 +304,305 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
       open={open}
       position="end"
       onOpenChange={(_, data) => onOpenChange(data.open)}
-      style={{ width: "min(700px, 90vw)", backgroundColor: "#FFFFFF", background: "#FFFFFF", boxShadow: "-8px 0 32px rgba(0, 0, 0, 0.15)" }}
+      style={{
+        width: "min(1140px, 96vw)",
+        maxWidth: "96vw",
+        backgroundColor: "#FFFFFF",
+        background: "#FFFFFF",
+        boxShadow: "-10px 0 40px rgba(15, 23, 42, 0.18)",
+      }}
     >
       <Toaster toasterId={toasterId} />
-      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
-        <DrawerHeaderTitle action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}>
-          Repair Request Details
-        </DrawerHeaderTitle>
-      </DrawerHeader>
-      <DrawerBody style={{ backgroundColor: "#FFFFFF" }}>
-        {request && (
-          <div style={{ paddingTop: "8px", paddingBottom: "24px" }}>
+
+      {/* Header */}
+      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
+        <DrawerHeaderTitle
+          action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
+                width: 34,
+                height: 34,
+                borderRadius: 8,
+                background: "#EFF6FF",
+                color: "#007ED5",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "14px",
-                padding: "16px 18px",
-                border: "1px solid #E1DFDD",
-                borderRadius: "12px",
-                background: "#FAFAFA",
+                justifyContent: "center",
+                fontSize: 18,
+                flexShrink: 0,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "10px",
-                    background: "#E7F5EC",
-                    color: "#107C10",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <WrenchRegular fontSize={20} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <TruncatedText text={request.RequestNumber} weight="semibold" size={400} maxWidth="260px" />
-                  <Text size={200} style={{ color: "#605E5C" }}>
-                    Requested on {formatDateTime(request.CreatedAt)}
-                  </Text>
-                </div>
-              </div>
-              <Badge appearance="tint" color={STATUS_COLOR[request.RequestStatus]} size="large">
-                {request.RequestStatus}
-              </Badge>
+              <WrenchRegular style={{ fontSize: 18 }} />
             </div>
+            <div>
+              <Text weight="bold" style={{ color: "#0F172A", fontSize: "15px", display: "block" }}>
+                Repair Request Details
+              </Text>
+              <span style={{ fontSize: "12px", color: "#64748B" }}>
+                Review repair requisition {request.RequestNumber || "REP-REQ"}
+              </span>
+            </div>
+          </div>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
 
-            <SectionTitle>Asset</SectionTitle>
-            <TruncatedText text={`${request.AssetName} (${request.AssetTagID})`} size={300} />
+      {/* Body */}
+      <DrawerBody style={{ backgroundColor: "#FFFFFF", padding: "20px 24px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.65fr) minmax(360px, 1fr)",
+            gap: "24px",
+            alignItems: "start",
+            paddingBottom: "24px",
+          }}
+        >
+          {/* Left Column (~65%): Information Card Groups */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            {/* Requester Identity Card */}
+            <DrawerTopIdentityCard
+              name={request.RequestedByName || "Employee"}
+              jobTitle={request.RequestNumber ? `Requisition ${request.RequestNumber}` : "Hardware Service Requisition"}
+              email={request.RequestedByEmail}
+              dateLabel={`Requested on ${formatDateTime(request.CreatedAt)}`}
+              status={request.RequestStatus}
+              statusColor={
+                request.RequestStatus === "Approved"
+                  ? "success"
+                  : request.RequestStatus === "Rejected" || request.RequestStatus === "Unrepairable"
+                  ? "danger"
+                  : "warning"
+              }
+            />
 
-            <SectionTitle>Issue</SectionTitle>
-            <InfoRow label="Issue Type" value={request.IssueType} />
-            <InfoRow label="Problem Category" value={request.ProblemCategory} />
+            {/* Asset Under Maintenance */}
+            <InfoCardGroup title="Asset Under Maintenance">
+              <InfoRow label="Asset Name" value={request.AssetName || "—"} />
+              <InfoRow label="Asset Tag ID" value={request.AssetTagID || "—"} />
+              <InfoRow label="Issue Category" value={request.ProblemCategory || "—"} />
+              <InfoRow label="Issue Classification" value={request.IssueType || "Standard Maintenance"} hasDivider={false} />
+            </InfoCardGroup>
 
-            <SectionTitle>Problem Description</SectionTitle>
-            <Text size={300} style={{ display: "block", whiteSpace: "pre-wrap" }}>
-              {request.Problem}
-            </Text>
+            {/* Problem Description & Symptoms */}
+            <InfoCardGroup title="Problem Description & Diagnostic Symptoms">
+              <div
+                style={{
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                  fontSize: "13.5px",
+                  color: "#334155",
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  margin: "8px 0",
+                }}
+              >
+                {request.Problem || "No problem description submitted."}
+              </div>
+            </InfoCardGroup>
 
-            {request.AttachmentURL.length > 0 && (
-              <>
-                <SectionTitle>Attachments</SectionTitle>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {request.AttachmentURL.map((f) => (
+            {/* Diagnostic Attachments */}
+            {attachmentFiles.length > 0 && (
+              <InfoCardGroup title={`Diagnostic Attachments (${attachmentFiles.length})`}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "8px 0" }}>
+                  {attachmentFiles.map((file, idx) => (
                     <a
-                      key={f.relativePath}
-                      href={f.url}
+                      key={idx}
+                      href={file.url}
                       target="_blank"
                       rel="noreferrer"
-                      title={f.fileName}
                       style={{
-                        fontSize: "13px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        background: "#FFFFFF",
+                        border: "1px solid #BFDBFE",
                         color: "#007ED5",
-                        display: "block",
-                        maxWidth: "100%",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
+                        textDecoration: "none",
+                        fontSize: "13px",
+                        fontWeight: 500,
                       }}
                     >
-                      {f.fileName}
+                      <AttachRegular style={{ fontSize: 16 }} />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {file.fileName || `Attachment ${idx + 1}`}
+                      </span>
                     </a>
                   ))}
                 </div>
-              </>
+              </InfoCardGroup>
             )}
 
-            <Divider style={{ margin: "20px 0" }} />
-
-            <Text size={400} weight="semibold">
-              Admin Decision
-            </Text>
-            <InfoRow label="Assigned Admin(s)" value={request.AssignedAdminName ?? "-"} />
-            <InfoRow label="Status" value={request.RequestStatus} />
-            <InfoRow label="Decided By" value={request.ApprovedAdminName ?? "-"} />
-            <InfoRow label="Decision Date" value={formatDateTime(request.ApprovedDate)} />
-            {(request.RequestStatus === "Rejected" || request.RequestStatus === "Unrepairable") && request.AdminRejectionReason && (
-              <InfoRow
-                label={request.RequestStatus === "Unrepairable" ? "Unrepairable Note" : "Rejection Reason"}
-                value={request.AdminRejectionReason}
+            {/* If Request is already resolved / unrepairable, show Left Side Decision Record */}
+            {!isPending && (
+              <DecisionSummaryCard
+                status={request.RequestStatus}
+                decidedBy={request.ApprovedAdminName}
+                decidedDate={request.ApprovedDate}
+                decidedReason={request.AdminRejectionReason}
+                extraDetails={
+                  request.RequestStatus === "Unrepairable" && request.ReplacementRequestNumber
+                    ? [{ label: "Replacement Requisition", value: request.ReplacementRequestNumber }]
+                    : []
+                }
               />
             )}
-            {request.RequestStatus === "Unrepairable" && request.ReplacementRequestNumber && (
-              <InfoRow label="Replacement Requested" value={request.ReplacementRequestNumber} />
-            )}
+          </div>
 
-            {canAct && (
-              <>
-                <Divider style={{ margin: "20px 0" }} />
-                {!noteMode ? (
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                    <Button
-                      appearance="outline"
-                      icon={<ArrowUndoRegular />}
-                      disabled={acting}
-                      onClick={() => {
-                        setNoteMode("Reprogress");
-                        setNoteText("");
-                      }}
-                    >
-                      Send Back
-                    </Button>
-                    <Button
-                      appearance="outline"
-                      icon={<WarningRegular />}
-                      disabled={acting}
-                      onClick={() => {
-                        setNoteMode("Unrepairable");
-                        setNoteText("");
-                      }}
-                    >
-                      Unrepairable
-                    </Button>
-                    <Button
-                      appearance="outline"
-                      icon={<DismissCircleRegular />}
-                      disabled={acting}
-                      onClick={() => {
-                        setNoteMode("Reject");
-                        setNoteText("");
-                      }}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      appearance="primary"
-                      style={{ background: "#007ED5", borderColor: "#007ED5" }}
-                      icon={acting ? <Spinner size="tiny" /> : <CheckmarkCircleRegular />}
-                      disabled={acting}
-                      onClick={() => onApprove?.()}
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <Textarea
-                      placeholder={
-                        noteMode === "Unrepairable"
-                          ? "Explain why this asset can't be repaired — a replacement will be auto-requested..."
-                          : noteMode === "Reprogress"
-                            ? "What additional information is needed from the requestor?"
-                            : "Reason for rejecting this repair request..."
-                      }
-                      value={noteText}
-                      onChange={(_, d) => setNoteText(d.value)}
-                      rows={3}
-                    />
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                      <Button appearance="secondary" size="small" disabled={acting} onClick={() => setNoteMode(null)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        appearance="primary"
-                        size="small"
-                        style={{ background: "#007ED5", borderColor: "#007ED5" }}
-                        disabled={acting || !noteText.trim()}
-                        icon={acting ? <Spinner size="tiny" /> : undefined}
-                        onClick={() =>
-                          noteMode === "Unrepairable"
-                            ? onUnrepairable?.(noteText)
-                            : noteMode === "Reprogress"
-                              ? onReprogress?.(noteText)
-                              : onReject?.(noteText)
-                        }
-                      >
-                        {noteMode === "Unrepairable" ? "Confirm Unrepairable" : noteMode === "Reprogress" ? "Send Back" : "Confirm Reject"}
-                      </Button>
+          {/* Right Column (~35%): Make Decision or Employee Response */}
+          <div style={{ position: "sticky", top: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Admin Decision Container */}
+            {isActionable ? (
+              <DecisionContainer
+                isActionable={true}
+                title="Make Decision"
+                subtitle="Review & authorize repair or record outcome"
+                badgeLabel="Action Required"
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {/* Option 1: Approve */}
+                  <OptionCard
+                    def={REPAIR_DECISION_OPTIONS.Approve}
+                    selected={selectedDecision === "Approve"}
+                    onClick={() => setSelectedDecision("Approve")}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#065F46" }}>
+                        Service / Vendor Instructions <span style={{ fontWeight: 400, color: "#64748B" }}>(Optional)</span>
+                      </label>
+                      <Textarea
+                        placeholder="e.g. Authorized for internal workshop battery replacement..."
+                        value={vendorNote}
+                        onChange={(_, d) => setVendorNote(d.value)}
+                        rows={2}
+                      />
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  </OptionCard>
 
-            {needsEmployeeResponse && (
-              <>
-                <Divider style={{ margin: "20px 0" }} />
-                <div style={{ padding: "10px 12px", borderRadius: "8px", background: "#FFF4CE", border: "1px solid #F2C811", marginBottom: "12px" }}>
-                  <Text size={200} weight="semibold" style={{ color: "#7A5D00", display: "block" }}>
-                    Admin needs more information before deciding on this request.
+                  {/* Option 2: Mark Beyond Repair */}
+                  <OptionCard
+                    def={REPAIR_DECISION_OPTIONS.Unrepairable}
+                    selected={selectedDecision === "Unrepairable"}
+                    onClick={() => setSelectedDecision("Unrepairable")}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#6D28D9" }}>
+                        Decommissioning Rationale <span style={{ color: "#DC2626" }}>*</span>
+                      </label>
+                      <Textarea
+                        placeholder="Detail why motherboard/screen is unfixable and replacement is needed..."
+                        value={unrepairableNote}
+                        onChange={(_, d) => setUnrepairableNote(d.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </OptionCard>
+
+                  {/* Option 3: Reject */}
+                  <OptionCard
+                    def={REPAIR_DECISION_OPTIONS.Reject}
+                    selected={selectedDecision === "Reject"}
+                    onClick={() => setSelectedDecision("Reject")}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#B91C1C" }}>
+                        Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
+                      </label>
+                      <Textarea
+                        placeholder="Explain reason for rejecting this repair request..."
+                        value={rejectionReason}
+                        onChange={(_, d) => setRejectionReason(d.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </OptionCard>
+
+                  {/* Option 4: Reprogress */}
+                  <OptionCard
+                    def={REPAIR_DECISION_OPTIONS.Reprogress}
+                    selected={selectedDecision === "Reprogress"}
+                    onClick={() => setSelectedDecision("Reprogress")}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#92400E" }}>
+                        Information Needed from Employee <span style={{ color: "#DC2626" }}>*</span>
+                      </label>
+                      <Textarea
+                        placeholder="e.g. Please provide photos of the physical damage or error logs..."
+                        value={reprogressReason}
+                        onChange={(_, d) => setReprogressReason(d.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </OptionCard>
+                </div>
+
+                {/* Primary Submit Button */}
+                <button
+                  type="button"
+                  disabled={isSubmitDisabled}
+                  onClick={handleDecisionSubmit}
+                  style={{
+                    width: "100%",
+                    marginTop: "6px",
+                    background: currentOptionDef.accent,
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "22px",
+                    padding: "11px 24px",
+                    fontSize: "13.5px",
+                    fontWeight: 700,
+                    cursor: isSubmitDisabled ? "not-allowed" : "pointer",
+                    opacity: isSubmitDisabled ? 0.6 : 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    boxShadow: isSubmitDisabled ? "none" : `0 3px 10px ${currentOptionDef.accent}40`,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {isActing ? (
+                    <Spinner size="tiny" />
+                  ) : (
+                    <>
+                      {currentOptionDef.icon}
+                      <span>Confirm {currentOptionDef.label.split(" ")[0]}</span>
+                    </>
+                  )}
+                </button>
+              </DecisionContainer>
+            ) : needsEmployeeResponse ? (
+              /* Employee Reprogress Clarification Form */
+              <div
+                style={{
+                  background: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: "16px",
+                  padding: "20px 22px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                }}
+              >
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+                  Provide Clarification
+                </div>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#FFFBEB",
+                    border: "1px solid #FDE68A",
+                  }}
+                >
+                  <Text size={200} weight="semibold" style={{ color: "#92400E", display: "block" }}>
+                    ⚠ Admin requested more diagnostic information:
                   </Text>
                   {pendingReprogress?.AdminReason && (
                     <Text size={200} style={{ color: "#7A5D00", display: "block", marginTop: "4px" }}>
@@ -349,36 +611,62 @@ const RepairRequestDetailsPanel: React.FC<RepairRequestDetailsPanelProps> = ({
                   )}
                 </div>
 
-                <Text weight="semibold" style={{ display: "block", marginBottom: "6px" }}>
-                  Problem Description
-                </Text>
-                <Textarea value={problem} onChange={(_, d) => setProblem(d.value)} rows={3} />
-
-                <Text weight="semibold" style={{ display: "block", marginTop: "12px", marginBottom: "6px" }}>
-                  Your Response (Optional)
-                </Text>
-                <Textarea
-                  placeholder="Add any context for the Admin..."
-                  value={employeeResponse}
-                  onChange={(_, d) => setEmployeeResponse(d.value)}
-                  rows={2}
-                />
-
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-                  <Button
-                    appearance="primary"
-                    style={{ background: "#007ED5", borderColor: "#007ED5" }}
-                    disabled={submittingResponse || !pendingReprogress}
-                    icon={submittingResponse ? <Spinner size="tiny" /> : undefined}
-                    onClick={handleSubmitResponse}
-                  >
-                    Submit Response
-                  </Button>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A", display: "block", marginBottom: "6px" }}>
+                    Updated Problem Statement
+                  </label>
+                  <Textarea value={problem} onChange={(_, d) => setProblem(d.value)} rows={3} style={{ width: "100%" }} />
                 </div>
-              </>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A", display: "block", marginBottom: "6px" }}>
+                    Your Clarification Response
+                  </label>
+                  <Textarea
+                    placeholder="Describe symptoms, attachments, or error codes..."
+                    value={employeeResponse}
+                    onChange={(_, d) => setEmployeeResponse(d.value)}
+                    rows={3}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={submittingResponse || !pendingReprogress}
+                  onClick={handleEmployeeSubmitResponse}
+                  style={{
+                    width: "100%",
+                    background: "#007ED5",
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "22px",
+                    padding: "10px 24px",
+                    fontSize: "13.5px",
+                    fontWeight: 600,
+                    cursor: submittingResponse ? "not-allowed" : "pointer",
+                    boxShadow: "0 2px 8px rgba(0,126,213,0.25)",
+                  }}
+                >
+                  {submittingResponse ? <Spinner size="tiny" /> : "Submit Clarification"}
+                </button>
+              </div>
+            ) : (
+              /* Already Resolved Decision Card */
+              <DecisionSummaryCard
+                status={request.RequestStatus}
+                decidedBy={request.ApprovedAdminName}
+                decidedDate={request.ApprovedDate}
+                decidedReason={request.AdminRejectionReason}
+                extraDetails={
+                  request.RequestStatus === "Unrepairable" && request.ReplacementRequestNumber
+                    ? [{ label: "Replacement Requisition", value: request.ReplacementRequestNumber }]
+                    : []
+                }
+              />
             )}
           </div>
-        )}
+        </div>
       </DrawerBody>
     </Drawer>
   );

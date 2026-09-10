@@ -12,6 +12,7 @@ import {
   DialogSurface,
   DialogTitle,
   DialogBody,
+  DialogContent,
   DialogActions,
   Badge,
 } from "@fluentui/react-components";
@@ -104,12 +105,24 @@ const EmployeeMyAssetDetail: React.FC = () => {
   const [reportLostOpen, setReportLostOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [adminEditOpen, setAdminEditOpen] = useState(false);
-  const isAdmin = activeRole === "admin" || (currentUser?.role || "").toLowerCase().includes("admin") || (currentUser?.role || "").toLowerCase() === "administrator";
+  const isAdmin = activeRole === "admin" || (currentUser?.roleName || "").toLowerCase().includes("admin") || (currentUser?.roleName || "").toLowerCase() === "administrator";
 
   const [upgradeHistory, setUpgradeHistory] = useState<AssetUpgradeRequestRecord[]>([]);
   const [repairHistory, setRepairHistory] = useState<AssetRepairRequestRecord[]>([]);
   const [activeHistoryTab, setActiveHistoryTab] = useState<"requests" | "service" | "audit" | "warranty">("requests");
   const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
+  const [custodyPerson, setCustodyPerson] = useState<{
+    name: string;
+    role: string;
+    department: string;
+    assignedDate: string;
+  } | null>({
+    name: "Robert Chen",
+    role: "IT Asset Custodian & Operations Lead",
+    department: "Enterprise IT & Infrastructure",
+    assignedDate: "2024-01-16",
+  });
+  const [removeCustodyModalOpen, setRemoveCustodyModalOpen] = useState(false);
 
   const loadData = async () => {
     if (!assetId && !navState?.asset) {
@@ -236,15 +249,15 @@ Asset Tag ID:      ${asset.AssetTagID}
 Category:          ${asset.Category}
 Serial Number:     ${asset.SerialNo || "SN-A1B2C3D4"}
 Specification:     ${asset.Model || "Enterprise Hardware Standard"}
-Custodian:         ${asset.EmployeeName || currentUser?.displayName || "Assigned Quadra Staff"}
-Department:        ${asset.Department || "Engineering & Technology"}
+Custodian:         ${asset.AssignedToName || currentUser?.displayName || "Assigned Quadra Staff"}
+Department:        ${asset.AssignedToDepartment || "Engineering & Technology"}
 Site / Location:   ${asset.Site || "HQ - Coimbatore"} (${asset.Location || "Main Campus"})
 
 2. WARRANTY & AMC COVERAGE DETAILS
 --------------------------------------------------------------------------------
 Coverage Plan:     ProSupport Enterprise On-site Coverage & AMC
-Authorized OEM:    ${asset.Vendor || "Dell Technologies India Enterprise Support"}
-Commencement Date: ${formatDate(asset.PurchaseDate || "2024-01-15")}
+Authorized OEM:    ${asset.VendorName || "Dell Technologies India Enterprise Support"}
+Commencement Date: ${formatDate(asset.PurchasedDate || "2024-01-15")}
 Expiration Date:   ${asset.ExpireDate ? formatDate(asset.ExpireDate) : "Standard 3-Year Corporate Period"}
 Coverage Status:   ACTIVE & VERIFIED (Grade A Enterprise SLA)
 Response SLA:      Next Business Day On-Site Service & Rapid Parts Replacement
@@ -274,7 +287,7 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
 
   const holdingDate = useMemo(() => {
     if (!asset) return null;
-    return asset.PurchaseDate || (asset as any).AssignedAt || (asset as any).CreatedAt || "2024-01-15";
+    return asset.PurchasedDate || (asset as any).AssignedAt || (asset as any).CreatedAt || "2024-01-15";
   }, [asset]);
 
   const userAssetForReport: UserAssignedAsset = useMemo(
@@ -319,6 +332,8 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
           onClick={() => {
             if (navState?.fromEmployee) {
               navigate(`/Asset/employees/${navState.fromEmployee}`);
+            } else if (location.pathname.includes("/inventory")) {
+              navigate("/Asset/inventory");
             } else if (viewOnly) {
               navigate(-1);
             } else {
@@ -345,6 +360,8 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
           <span>
             {navState?.fromEmployee
               ? `Employees / ${navState.employeeName || "Employee"} / ${asset.AssetName}`
+              : location.pathname.includes("/inventory")
+              ? `Asset Inventory / ${asset.AssetName}`
               : `My Assets / ${asset.Category}`}
           </span>
         </button>
@@ -574,7 +591,7 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
                   <div style={{ background: "#F8FAFC", padding: "12px 14px", borderRadius: "12px", border: "1px solid #F1F5F9" }}>
                     <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>Department</div>
                     <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#0F172A", marginTop: "4px" }}>
-                      {asset.Department || "Corporate Engineering"}
+                      {asset.AssignedToDepartment || "Corporate Engineering"}
                     </div>
                   </div>
                 </div>
@@ -918,34 +935,6 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
               iconColor="#CA8A04"
               label="Warranty Expiry"
               value={asset.ExpireDate ? formatDate(asset.ExpireDate) : "Corporate Warranty"}
-              actionButton={
-                <button
-                  type="button"
-                  onClick={() => setWarrantyModalOpen(true)}
-                  title="View & Download Warranty Document"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    background: "#EFF6FF",
-                    border: "1px solid #BFDBFE",
-                    borderRadius: "8px",
-                    padding: "5px 9px",
-                    fontSize: "11.5px",
-                    fontWeight: 600,
-                    color: "#1D4ED8",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#DBEAFE")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "#EFF6FF")}
-                >
-                  <DocumentArrowDownRegular style={{ fontSize: "14px" }} />
-                  <span>View & Download</span>
-                </button>
-              }
             />
 
             {/* 6. Site / Location */}
@@ -1239,44 +1228,254 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
 
           {/* Tab Content 3: Audit & Custody Handover */}
           {activeHistoryTab === "audit" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Header Info */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+                    Asset Custodianship & Holder Governance
+                  </div>
+                  <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "2px" }}>
+                    Active personnel responsible for holding and managing compliance for Quadra tag <strong>{asset.AssetTagID}</strong>
+                  </div>
+                </div>
+                <Badge appearance="tint" color="informative">
+                  Audit Verified
+                </Badge>
+              </div>
+
+              {/* Dual Cards: 1. Asset Holding Person, 2. Asset Custody Person */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px" }}>
+                {/* 1. Asset Holding Person */}
+                <div
+                  style={{
+                    padding: "18px 20px",
+                    borderRadius: "16px",
+                    background: "#F8FAFC",
+                    border: "1.5px solid #E2E8F0",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: "14px",
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          color: "#2563EB",
+                          background: "#EFF6FF",
+                          padding: "2px 8px",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        Asset Holding Person
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: "#16A34A",
+                          background: "#DCFCE7",
+                          padding: "2px 8px",
+                          borderRadius: "999px",
+                        }}
+                      >
+                        Active In Possession
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "6px" }}>
+                      <div
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
+                          color: "#FFFFFF",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 700,
+                          fontSize: "16px",
+                          boxShadow: "0 2px 6px rgba(37,99,235,0.2)",
+                        }}
+                      >
+                        {((asset.AssignedToName || navState?.employeeName || currentUser?.displayName || "Alex Morgan").trim().split(/\s+/).map((n) => n[0]).join("").slice(0, 2) || "AL").toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+                          {asset.AssignedToName || navState?.employeeName || currentUser?.displayName || "Alex Morgan"}
+                        </div>
+                        <div style={{ fontSize: "12.5px", color: "#64748B" }}>
+                          {asset.AssignedToDepartment || "Engineering & Technology"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: "1px dashed #E2E8F0", paddingTop: "10px", display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748B" }}>
+                    <span>Holding Since:</span>
+                    <strong style={{ color: "#334155" }}>{formatDate(asset.PurchasedDate || "2024-01-15")}</strong>
+                  </div>
+                </div>
+
+                {/* 2. Asset Custody Person */}
+                <div
+                  style={{
+                    padding: "18px 20px",
+                    borderRadius: "16px",
+                    background: custodyPerson ? "#F8FAFC" : "#FFFBEB",
+                    border: `1.5px solid ${custodyPerson ? "#E2E8F0" : "#FDE68A"}`,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: "14px",
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          color: custodyPerson ? "#7C3AED" : "#D97706",
+                          background: custodyPerson ? "#F5F3FF" : "#FEF3C7",
+                          padding: "2px 8px",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        Asset Custody Person
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: custodyPerson ? "#0284C7" : "#B45309",
+                          background: custodyPerson ? "#E0F2FE" : "#FEF3C7",
+                          padding: "2px 8px",
+                          borderRadius: "999px",
+                        }}
+                      >
+                        {custodyPerson ? "Custody Assigned" : "Custody Released"}
+                      </span>
+                    </div>
+
+                    {custodyPerson ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "6px" }}>
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "50%",
+                            background: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)",
+                            color: "#FFFFFF",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 700,
+                            fontSize: "16px",
+                            boxShadow: "0 2px 6px rgba(139,92,246,0.2)",
+                          }}
+                        >
+                          {custodyPerson.name.split(/\s+/).map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A" }}>
+                            {custodyPerson.name}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#64748B" }}>
+                            {custodyPerson.role}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: "8px 0", color: "#92400E", fontSize: "13px" }}>
+                        No custodian currently assigned for this asset. Governance oversight is held at enterprise administration level.
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: "1px dashed #E2E8F0", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#64748B" }}>
+                      {custodyPerson ? (
+                        <>Custody Assigned: <strong style={{ color: "#334155" }}>{formatDate(custodyPerson.assignedDate)}</strong></>
+                      ) : (
+                        <span>Status: <strong style={{ color: "#B45309" }}>Unassigned</strong></span>
+                      )}
+                    </div>
+
+                    {custodyPerson ? (
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        style={{
+                          color: "#DC2626",
+                          fontWeight: 600,
+                          fontSize: "12px",
+                          borderRadius: "8px",
+                          padding: "4px 10px",
+                        }}
+                        onClick={() => setRemoveCustodyModalOpen(true)}
+                      >
+                        Remove Custody
+                      </Button>
+                    ) : (
+                      <Button
+                        size="small"
+                        appearance="outline"
+                        style={{
+                          color: "#007ED5",
+                          borderColor: "#007ED5",
+                          fontWeight: 600,
+                          fontSize: "12px",
+                          borderRadius: "8px",
+                        }}
+                        onClick={() => {
+                          setCustodyPerson({
+                            name: "Robert Chen",
+                            role: "IT Asset Custodian & Operations Lead",
+                            department: "Enterprise IT & Infrastructure",
+                            assignedDate: new Date().toISOString(),
+                          });
+                          dispatchToast(
+                            <Toast>
+                              <ToastTitle>Custody person assigned successfully.</ToastTitle>
+                            </Toast>,
+                            { intent: "success" }
+                          );
+                        }}
+                      >
+                        Assign Custody
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Custody Audit Verification Note */}
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "14px",
-                  padding: "16px 18px",
+                  marginTop: "4px",
+                  padding: "14px 18px",
                   borderRadius: "14px",
                   background: "#F8FAFC",
                   border: "1px solid #E2E8F0",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
                 }}
               >
-                <div
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    background: "#EFF6FF",
-                    color: "#007ED5",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "18px",
-                    flexShrink: 0,
-                  }}
-                >
-                  <HistoryRegular />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B" }}>
-                    Custodian Handover & Asset Allocation
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#475569", marginTop: "4px" }}>
-                    Assigned to <strong>{currentUser?.displayName || "Sarah Johnson"}</strong> on {formatDate(holdingDate)}.
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#64748B", marginTop: "4px" }}>
-                    Quadra Tag: <strong>{asset.AssetTagID}</strong> • Condition at handover: <strong>Grade A (Pristine)</strong>
-                  </div>
+                <HistoryRegular style={{ fontSize: "20px", color: "#007ED5", marginTop: "2px", flexShrink: 0 }} />
+                <div style={{ fontSize: "12.5px", color: "#475569", lineHeight: 1.5 }}>
+                  <strong>Custody Verification Policy:</strong> Handover verification was confirmed under enterprise governance protocol.
+                  The holding person is responsible for daily device care; the custody person performs scheduled audits, serial compliance, and security clearance.
                 </div>
               </div>
             </div>
@@ -1325,10 +1524,10 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
                       </Badge>
                     </div>
                     <div style={{ fontSize: "13.5px", color: "#475569", marginTop: "4px" }}>
-                      Certificate ID: <strong>WARR-{asset.AssetTagID || asset.ID}</strong> • Provider: <strong>{asset.Vendor || "Dell Technologies India Enterprise Partner"}</strong>
+                      Certificate ID: <strong>WARR-{asset.AssetTagID || asset.ID}</strong> • Provider: <strong>{asset.VendorName || "Dell Technologies India Enterprise Partner"}</strong>
                     </div>
                     <div style={{ fontSize: "12.5px", color: "#64748B", marginTop: "4px" }}>
-                      Coverage Period: <strong>{formatDate(asset.PurchaseDate || "2024-01-15")}</strong> to{" "}
+                      Coverage Period: <strong>{formatDate(asset.PurchasedDate || "2024-01-15")}</strong> to{" "}
                       <strong>{asset.ExpireDate ? formatDate(asset.ExpireDate) : "Standard 3-Year Corporate Period"}</strong> (Next Business Day On-Site Service)
                     </div>
                   </div>
@@ -1414,114 +1613,186 @@ Verification Code:  QAM-WARR-${(asset.AssetTagID || "001").replace(/[^a-zA-Z0-9]
 
       {/* Warranty Certificate Preview Modal */}
       <Dialog open={warrantyModalOpen} onOpenChange={(_, d) => setWarrantyModalOpen(d.open)}>
-        <DialogSurface style={{ maxWidth: "640px", borderRadius: "20px", padding: "28px" }}>
-          <DialogTitle
-            action={
-              <Button
-                appearance="subtle"
-                aria-label="close"
-                icon={<DismissRegular />}
-                onClick={() => setWarrantyModalOpen(false)}
-              />
-            }
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <DialogSurface style={{ width: "640px", maxWidth: "92vw", borderRadius: "20px", padding: "28px", boxSizing: "border-box" }}>
+          <DialogBody style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px", padding: 0 }}>
+            <DialogTitle
+              action={
+                <Button
+                  appearance="subtle"
+                  aria-label="close"
+                  icon={<DismissRegular />}
+                  onClick={() => setWarrantyModalOpen(false)}
+                />
+              }
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "10px",
+                    background: "#EFF6FF",
+                    color: "#007ED5",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "20px",
+                  }}
+                >
+                  <ShieldCheckmarkRegular />
+                </div>
+                <div>
+                  <div style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
+                    Certificate of Warranty Coverage
+                  </div>
+                  <div style={{ fontSize: "12.5px", color: "#64748B" }}>
+                    Quadra Enterprise Asset Protection & OEM SLA Agreement
+                  </div>
+                </div>
+              </div>
+            </DialogTitle>
+
+            <DialogContent style={{ width: "100%", boxSizing: "border-box", padding: 0, margin: 0 }}>
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "10px",
-                  background: "#EFF6FF",
-                  color: "#007ED5",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  marginTop: "8px",
+                  padding: "20px 24px",
+                  background: "#F8FAFC",
+                  border: "1.5px solid #E2E8F0",
+                  borderRadius: "14px",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "20px",
+                  flexDirection: "column",
+                  gap: "16px",
                 }}
               >
-                <ShieldCheckmarkRegular />
-              </div>
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
-                  Certificate of Warranty Coverage
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E2E8F0", paddingBottom: "12px" }}>
+                  <div>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px" }}>Certificate Number</span>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", marginTop: "2px" }}>WARR-{asset.AssetTagID || asset.ID}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "4px" }}>Status</span>
+                    <Badge appearance="tint" color="success">VERIFIED ACTIVE</Badge>
+                  </div>
                 </div>
-                <div style={{ fontSize: "12.5px", color: "#64748B" }}>
-                  Quadra Enterprise Asset Protection & OEM SLA Agreement
-                </div>
-              </div>
-            </div>
-          </DialogTitle>
 
-          <DialogBody>
-            <div
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px", fontSize: "13px" }}>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Covered Device:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetName}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Asset Tag ID:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetTagID}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Serial Number:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.SerialNo || "SN-A1B2C3D4"}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Custodian:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssignedToName || currentUser?.displayName || "Assigned Staff"}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Commencement Date:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{formatDate(asset.PurchasedDate || "2024-01-15")}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Warranty Expiration:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.ExpireDate ? formatDate(asset.ExpireDate) : "3 Years Standard"}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>Authorized OEM:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.VendorName || "Dell Technologies India Support"}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748B", fontSize: "11.5px", display: "block", marginBottom: "2px" }}>SLA Response:</span>
+                    <div style={{ fontWeight: 600, color: "#1E293B" }}>Next Business Day On-Site Service</div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "12px", fontSize: "12px", color: "#64748B", lineHeight: 1.5 }}>
+                  This certificate validates ongoing enterprise hardware warranty, component replacement, and manufacturer technical assistance authorized by Quadra Procurement.
+                </div>
+              </div>
+            </DialogContent>
+
+            <DialogActions
               style={{
                 marginTop: "16px",
-                padding: "20px",
-                background: "#F8FAFC",
-                border: "1.5px solid #E2E8F0",
-                borderRadius: "14px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+                width: "100%",
+                padding: 0,
+                boxSizing: "border-box",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E2E8F0", paddingBottom: "10px" }}>
-                <div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>Certificate Number</span>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A" }}>WARR-{asset.AssetTagID || asset.ID}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>Status</span>
-                  <div><Badge appearance="tint" color="success">VERIFIED ACTIVE</Badge></div>
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "13px" }}>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Covered Device:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetName}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Asset Tag ID:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.AssetTagID}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Serial Number:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.SerialNo || "SN-A1B2C3D4"}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Custodian:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.EmployeeName || currentUser?.displayName || "Assigned Staff"}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Commencement Date:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{formatDate(asset.PurchaseDate || "2024-01-15")}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Warranty Expiration:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.ExpireDate ? formatDate(asset.ExpireDate) : "3 Years Standard"}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>Authorized OEM:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>{asset.Vendor || "Dell Technologies India Support"}</div>
-                </div>
-                <div>
-                  <span style={{ color: "#64748B", fontSize: "11.5px" }}>SLA Response:</span>
-                  <div style={{ fontWeight: 600, color: "#1E293B" }}>Next Business Day On-Site Service</div>
-                </div>
-              </div>
-
-              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "10px", fontSize: "12px", color: "#64748B" }}>
-                This certificate validates ongoing enterprise hardware warranty, component replacement, and manufacturer technical assistance authorized by Quadra Procurement.
-              </div>
-            </div>
-
-            <DialogActions style={{ marginTop: "20px" }}>
-              <Button appearance="secondary" onClick={() => setWarrantyModalOpen(false)}>
+              <Button
+                appearance="secondary"
+                onClick={() => setWarrantyModalOpen(false)}
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  borderRadius: "10px",
+                  height: "40px",
+                  fontWeight: 600,
+                }}
+              >
                 Close
               </Button>
-              <Button appearance="primary" icon={<ArrowDownloadRegular />} onClick={handleDownloadWarranty}>
+              <Button
+                appearance="primary"
+                icon={<ArrowDownloadRegular />}
+                onClick={handleDownloadWarranty}
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  background: "#007ED5",
+                  borderRadius: "10px",
+                  height: "40px",
+                  fontWeight: 600,
+                }}
+              >
                 Download Document
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Remove Custody Confirmation Modal */}
+      <Dialog open={removeCustodyModalOpen} onOpenChange={(_, d) => setRemoveCustodyModalOpen(d.open)}>
+        <DialogSurface style={{ maxWidth: "440px", width: "90vw", borderRadius: "18px", padding: "24px" }}>
+          <DialogBody>
+            <DialogTitle style={{ fontSize: "17px", fontWeight: 700, color: "#0F172A", marginBottom: "8px" }}>
+              Remove Asset Custody?
+            </DialogTitle>
+            <DialogContent style={{ fontSize: "13.5px", color: "#475569", lineHeight: "1.5" }}>
+              Are you sure you want to remove custody assignment for asset <strong>{asset?.AssetTagID}</strong>?
+              The holding person will remain active in possession, but custodian oversight assignment will be cleared.
+            </DialogContent>
+            <DialogActions style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <Button appearance="secondary" onClick={() => setRemoveCustodyModalOpen(false)} style={{ borderRadius: "8px" }}>
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                style={{ background: "#DC2626", borderRadius: "8px" }}
+                onClick={() => {
+                  setCustodyPerson(null);
+                  setRemoveCustodyModalOpen(false);
+                  dispatchToast(
+                    <Toast>
+                      <ToastTitle>Asset custody removed successfully.</ToastTitle>
+                    </Toast>,
+                    { intent: "success" }
+                  );
+                }}
+              >
+                Remove Custody
               </Button>
             </DialogActions>
           </DialogBody>

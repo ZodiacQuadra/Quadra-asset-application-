@@ -10,6 +10,7 @@ export interface AssetModuleEmployee {
   EmployeeId: string | null;
   JobTitle: string | null;
   Department: string | null;
+  Branch?: string | null;
   AssetRole: string | null;
   AssetRoleName: string | null;
 }

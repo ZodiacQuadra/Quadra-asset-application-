@@ -163,7 +163,7 @@ const SearchAssets: React.FC = () => {
           getAssetCategories().catch(() => []),
           getAssetVendors().catch(() => []),
           getAppLocations().catch(() => []),
-          getEntraDepartments().catch(() => []),
+          getEntraDepartments(getStoredAuthToken() || "").catch(() => []),
           getAssetBrands().catch(() => []),
           getAssetModuleEmployees(1, 250).catch(() => ({ users: [], total: 0 })),
           getAssetRepairRequests({ adminId: "local-admin" }).catch(() => []),
@@ -196,8 +196,8 @@ const SearchAssets: React.FC = () => {
     const timer = setTimeout(async () => {
       setPersonLoading(true);
       try {
-        const res = await getAllEntraUsers({ search: personQuery, top: 8 });
-        setPersonResults(res.data);
+        const res = await getAllEntraUsers(1, 8, personQuery);
+        setPersonResults(res.data?.users || []);
       } catch (err) {
         console.error("Failed to search Entra users", err);
       } finally {
@@ -623,7 +623,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
     return list.map((emp) => {
       const assigned = assets.filter(
         (a) =>
-          a.AssignedTo === emp.ID ||
+          a.AssignedToUserID === emp.ID ||
           (a.AssignedToName && a.AssignedToName.toLowerCase() === (emp.DisplayName || "").toLowerCase()) ||
           (emp.Mail && ((a as any).AssignedToEmail || (a as any).Mail) === emp.Mail)
       );
@@ -709,7 +709,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
           person.DisplayName.toLowerCase().includes(q) ||
           (person.Mail || "").toLowerCase().includes(q) ||
           (person.JobTitle || "").toLowerCase().includes(q) ||
-          (person.EmployeeID || "").toLowerCase().includes(q) ||
+          ((person as any).EmployeeID || person.EmployeeId || "").toLowerCase().includes(q) ||
           person.assignedAssets.some((a) => (a.AssetTagID || "").toLowerCase().includes(q) || a.AssetName.toLowerCase().includes(q));
         if (!matchesQ) return false;
       }
@@ -717,7 +717,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
         return false;
       }
       if (branch !== "All Branches") {
-        const b = normalizeBranch(person.Branch || "Coimbatore");
+        const b = normalizeBranch((person as any).Branch || (person as any).Office_Location || "Coimbatore");
         if (b !== branch) return false;
       }
       return true;
@@ -1799,7 +1799,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                               <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#F1F5F9", display: "grid", placeItems: "center" }}>
-                                {getCategoryIcon(item.category, 16)}
+                                {getCategoryIcon(item.category)}
                               </div>
                               <div>
                                 <div style={{ fontWeight: 600, color: "#0F172A" }}>{item.assetName}</div>
@@ -1980,7 +1980,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                               <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#F1F5F9", display: "grid", placeItems: "center" }}>
-                                {getCategoryIcon(item.asset.Category, 16)}
+                                {getCategoryIcon(item.asset.Category)}
                               </div>
                               <div>
                                 <div style={{ fontWeight: 600, color: "#0F172A" }}>{item.asset.AssetName}</div>
@@ -2173,7 +2173,7 @@ Status         : OFFICIALLY CERTIFIED AND ACTIVE ON ENTERPRISE NETWORK
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <span style={{ padding: "2px 8px", borderRadius: "9999px", background: "#F1F5F9", fontSize: "11.5px", color: "#475569" }}>
-                              {normalizeBranch(p.Branch || "Coimbatore")}
+                              {normalizeBranch((p as any).Branch || (p as any).Office_Location || "Coimbatore")}
                             </span>
                           </td>
                           <td style={{ padding: "12px 16px" }}>

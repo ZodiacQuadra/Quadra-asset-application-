@@ -35,6 +35,11 @@ import {
   ChatRegular,
   CheckmarkCircleFilled,
   HistoryRegular,
+  ShieldCheckmarkRegular,
+  BoxRegular,
+  ClockRegular,
+  WarningRegular,
+  ClipboardTaskListLtrRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../Auth/AuthProvider";
 import { useThemedMountNode } from "../../Common/useThemedMountNode";
@@ -83,6 +88,9 @@ interface DecisionOptionDef {
   description: string;
   icon: React.ReactNode;
   accent: string;
+  iconBg: string;
+  activeBg: string;
+  activeBorder: string;
 }
 
 const OptionCard: React.FC<{
@@ -94,35 +102,68 @@ const OptionCard: React.FC<{
   <div
     onClick={onClick}
     style={{
-      border: selected ? `2px solid ${def.accent}` : "1px solid #E1DFDD",
-      background: selected ? `${def.accent}0D` : "#FFFFFF",
-      borderRadius: "8px",
-      padding: "12px 14px",
+      border: selected ? `2px solid ${def.activeBorder}` : "1.5px solid #E2E8F0",
+      background: selected ? def.activeBg : "#FFFFFF",
+      borderRadius: "14px",
+      padding: "14px 16px",
       cursor: "pointer",
       position: "relative",
-      transition: "all 0.15s ease",
+      boxShadow: selected ? `0 4px 16px ${def.accent}1F` : "0 1px 3px rgba(0, 0, 0, 0.02)",
+      transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
     }}
   >
-    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-      <div style={{ color: def.accent, fontSize: "20px", marginTop: "2px" }}>{def.icon}</div>
-      <div style={{ flex: 1 }}>
-        <Text weight="semibold" style={{ color: selected ? def.accent : undefined }}>
-          {def.label}
-        </Text>
-        <br />
-        <Text size={200} style={{ color: "#605E5C" }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "10px",
+          background: selected ? def.accent : def.iconBg,
+          color: selected ? "#FFFFFF" : def.accent,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "18px",
+          flexShrink: 0,
+          transition: "all 0.15s ease",
+        }}
+      >
+        {def.icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <Text weight="bold" size={300} style={{ color: selected ? def.accent : "#1E293B" }}>
+            {def.label}
+          </Text>
+          {selected ? (
+            <CheckmarkCircleFilled style={{ color: def.accent, fontSize: "18px", flexShrink: 0 }} />
+          ) : (
+            <span
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                border: "1.5px solid #CBD5E1",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </div>
+        <Text size={200} style={{ color: "#64748B", display: "block", marginTop: "3px", lineHeight: 1.35 }}>
           {def.description}
         </Text>
       </div>
-      {selected && <CheckmarkCircleFilled style={{ color: def.accent, fontSize: "18px" }} />}
     </div>
     {selected && children && (
-      // Fluent's Dropdown popup is portaled to document.body (via mountNode),
-      // but React still bubbles its click events up through the *component*
-      // tree, not the DOM tree — so without stopping propagation here,
-      // selecting an option also re-fires this card's own onClick above,
-      // which calls handleSelect again and immediately resets the selection.
-      <div style={{ marginTop: "12px" }} onClick={(e) => e.stopPropagation()}>
+      <div
+        style={{
+          marginTop: "12px",
+          paddingTop: "12px",
+          borderTop: `1px dashed ${def.accent}40`,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {children}
       </div>
     )}
@@ -215,23 +256,71 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
   const options: DecisionOptionDef[] =
     role === "manager"
       ? [
-          { kind: "Approve", label: "Approve", description: "Grant this request", icon: <CheckmarkCircleRegular />, accent: "#107C10" },
-          { kind: "Reject", label: "Reject", description: "Decline this request", icon: <DismissCircleRegular />, accent: "#D13438" },
-          { kind: "Reprogress", label: "Need More Info", description: "Request clarification from the employee", icon: <ChatRegular />, accent: "#0066B3" },
+          {
+            kind: "Approve",
+            label: "Approve Request",
+            description: "Grant approval and forward to IT Admin for hardware fulfillment",
+            icon: <CheckmarkCircleRegular />,
+            accent: "#059669",
+            iconBg: "#ECFDF5",
+            activeBg: "#F0FDF4",
+            activeBorder: "#10B981",
+          },
+          {
+            kind: "Reject",
+            label: "Reject Requisition",
+            description: "Decline this request with official justification",
+            icon: <DismissCircleRegular />,
+            accent: "#DC2626",
+            iconBg: "#FEF2F2",
+            activeBg: "#FEF2F2",
+            activeBorder: "#EF4444",
+          },
+          {
+            kind: "Reprogress",
+            label: "Request Information",
+            description: "Ask the employee for more specifications or justification",
+            icon: <ChatRegular />,
+            accent: "#D97706",
+            iconBg: "#FFFBEB",
+            activeBg: "#FFFBEB",
+            activeBorder: "#F59E0B",
+          },
         ]
       : [
           {
             kind: approveKind,
-            label: approveKind === "Override" ? "Override & Complete" : "Approve",
+            label: approveKind === "Override" ? "Admin Override & Issue" : "Approve & Issue Asset",
             description:
               approveKind === "Override"
-                ? `Bypass Manager approval (status: ${request?.ManagerApprovalStatus}) and issue an asset`
-                : "Grant this request and issue an asset",
+                ? `Bypass Manager review (currently ${request?.ManagerApprovalStatus}) and allocate equipment immediately`
+                : "Approve request and allocate in-stock equipment from inventory",
             icon: <CheckmarkCircleRegular />,
-            accent: "#107C10",
+            accent: approveKind === "Override" ? "#007ED5" : "#059669",
+            iconBg: approveKind === "Override" ? "#EFF6FF" : "#ECFDF5",
+            activeBg: approveKind === "Override" ? "#EFF6FF" : "#F0FDF4",
+            activeBorder: approveKind === "Override" ? "#007ED5" : "#10B981",
           },
-          { kind: "Reject", label: "Reject", description: "Decline this request", icon: <DismissCircleRegular />, accent: "#D13438" },
-          { kind: "Reprogress", label: "Need More Info", description: "Request clarification from the employee", icon: <ChatRegular />, accent: "#0066B3" },
+          {
+            kind: "Reject",
+            label: "Reject Requisition",
+            description: "Decline this request and notify custodian",
+            icon: <DismissCircleRegular />,
+            accent: "#DC2626",
+            iconBg: "#FEF2F2",
+            activeBg: "#FEF2F2",
+            activeBorder: "#EF4444",
+          },
+          {
+            kind: "Reprogress",
+            label: "Request Information",
+            description: "Send questions back to employee before deciding",
+            icon: <ChatRegular />,
+            accent: "#D97706",
+            iconBg: "#FFFBEB",
+            activeBg: "#FFFBEB",
+            activeBorder: "#F59E0B",
+          },
         ];
 
   const handleSelect = async (kind: DecisionKind) => {
@@ -368,42 +457,102 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
     const decidedDate = role === "manager" ? request.ManagerApprovedDate : request.AdminApprovedDate;
     const decidedReason = role === "manager" ? request.ManagerApprovedReason : request.AdminApprovedReason;
 
-    if (status === "Re-Progress") {
-      return (
-        <Text size={200} style={{ color: "#B8860B" }}>
-          Sent back to the requestor for more information — awaiting their response.
-        </Text>
-      );
-    }
-    if (status === "Approved") {
-      return (
-        <>
-          <Text size={200} style={{ color: "#107C10" }}>
-            Approved{decidedBy ? ` by ${decidedBy}` : ""} on {formatDateTime(decidedDate)}.
-          </Text>
-          {role === "admin" && request.AssignedAssetName && (
-            <Text size={200} style={{ display: "block", marginTop: "4px" }}>
-              Issued: {request.AssignedAssetName} ({request.AssignedAssetTagID})
-            </Text>
+    const isApproved = status === "Approved";
+    const isRejected = status === "Rejected";
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px",
+          background: isApproved ? "#F0FDF4" : isRejected ? "#FEF2F2" : "#FFFBEB",
+          border: isApproved ? "1.5px solid #BBF7D0" : isRejected ? "1.5px solid #FECACA" : "1.5px solid #FDE68A",
+          borderRadius: "14px",
+          padding: "16px",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                background: isApproved ? "#16A34A" : isRejected ? "#DC2626" : "#D97706",
+                color: "#FFFFFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "16px",
+                flexShrink: 0,
+              }}
+            >
+              {isApproved ? <CheckmarkCircleFilled /> : isRejected ? <DismissCircleRegular /> : <ClockRegular />}
+            </div>
+            <div>
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: "14.5px",
+                  color: isApproved ? "#166534" : isRejected ? "#991B1B" : "#92400E",
+                  display: "block",
+                  lineHeight: 1.2,
+                }}
+              >
+                {isApproved ? "Approved & Fulfillable" : isRejected ? "Request Rejected" : "Awaiting Clarification"}
+              </span>
+              <span style={{ fontSize: "11.5px", color: "#64748B" }}>
+                {isApproved ? "Inventory allocation confirmed" : isRejected ? "Formal rejection recorded" : "Pending employee response"}
+              </span>
+            </div>
+          </div>
+          <Badge appearance="filled" color={isApproved ? "success" : isRejected ? "danger" : "warning"} size="medium">
+            {status}
+          </Badge>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px" }}>
+          {decidedBy && (
+            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #E2E8F0", paddingBottom: "6px" }}>
+              <span style={{ color: "#64748B" }}>Decided By</span>
+              <span style={{ fontWeight: 600, color: "#1E293B" }}>{decidedBy}</span>
+            </div>
           )}
-        </>
-      );
-    }
-    if (status === "Rejected") {
-      return (
-        <>
-          <Text size={200} style={{ color: "#D13438" }}>
-            Rejected{decidedBy ? ` by ${decidedBy}` : ""} on {formatDateTime(decidedDate)}.
-          </Text>
+          {decidedDate && (
+            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #E2E8F0", paddingBottom: "6px" }}>
+              <span style={{ color: "#64748B" }}>Decision Date</span>
+              <span style={{ fontWeight: 500, color: "#1E293B" }}>{formatDateTime(decidedDate)}</span>
+            </div>
+          )}
+          {request.AssignedAssetName && (
+            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #E2E8F0", paddingBottom: "6px" }}>
+              <span style={{ color: "#64748B" }}>Issued Hardware</span>
+              <span style={{ fontWeight: 700, color: "#15803D" }}>
+                {request.AssignedAssetName} ({request.AssignedAssetTagID})
+              </span>
+            </div>
+          )}
+          {request.IsAdminOverride && (
+            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #E2E8F0", paddingBottom: "6px" }}>
+              <span style={{ color: "#64748B" }}>Admin Override</span>
+              <span style={{ fontWeight: 700, color: "#007ED5" }}>Yes (Manager Bypassed)</span>
+            </div>
+          )}
           {decidedReason && (
-            <Text size={200} style={{ display: "block", marginTop: "4px", color: "#605E5C" }}>
-              Reason: {decidedReason}
-            </Text>
+            <div style={{ marginTop: "4px", padding: "10px 12px", borderRadius: "8px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.06)" }}>
+              <span style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                Official Resolution Notes
+              </span>
+              <span style={{ color: "#334155", fontSize: "12.5px", marginTop: "3px", display: "block", lineHeight: 1.4 }}>
+                {decidedReason}
+              </span>
+            </div>
           )}
-        </>
-      );
-    }
-    return <Text size={200} style={{ color: "#605E5C" }}>Not yet actionable at this stage.</Text>;
+        </div>
+      </div>
+    );
   };
 
   const renderEmployeeStatus = () => {
@@ -487,8 +636,8 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
       position="end"
       onOpenChange={(_, data) => onOpenChange(data.open)}
       style={{
-        width: "min(880px, 80vw)",
-        maxWidth: "80vw",
+        width: "min(1140px, 96vw)",
+        maxWidth: "96vw",
         backgroundColor: "#FFFFFF",
         background: "#FFFFFF",
         boxShadow: "-10px 0 40px rgba(15, 23, 42, 0.18)",
@@ -496,16 +645,38 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
     >
       <Toaster toasterId={toasterId} />
       {portal}
-      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
+      <DrawerHeader style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0", padding: "16px 24px" }}>
         <DrawerHeaderTitle
           action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={() => onOpenChange(false)} />}
         >
-          Request Details
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: "#EFF6FF",
+                color: "#007ED5",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              <ClipboardTaskListLtrRegular style={{ fontSize: 18 }} />
+            </div>
+            <div>
+              <Text weight="bold" style={{ color: "#0F172A", fontSize: "15px" }}>
+                Request Details
+              </Text>
+            </div>
+          </div>
         </DrawerHeaderTitle>
       </DrawerHeader>
-      <DrawerBody style={{ backgroundColor: "#FFFFFF" }}>
+      <DrawerBody style={{ backgroundColor: "#FFFFFF", padding: "20px 24px" }}>
         {request && (
-          <div style={{ paddingTop: "8px", paddingBottom: "24px" }}>
+          <div style={{ paddingTop: "4px", paddingBottom: "24px" }}>
             {/* Requestor summary card */}
             <div
               style={{
@@ -514,56 +685,60 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
                 justifyContent: "space-between",
                 flexWrap: "wrap",
                 gap: "16px",
-                padding: "18px 20px",
-                border: "1px solid #E1DFDD",
-                borderRadius: "12px",
-                background: "#FAFAFA",
+                padding: "16px 18px",
+                border: "1px solid #E2E8F0",
+                borderRadius: "14px",
+                background: "#F8FAFC",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
-                <Avatar name={request.RequestedByName ?? "?"} size={56} />
+                <Avatar name={request.RequestedByName ?? "?"} size={48} />
                 <div style={{ minWidth: 0 }}>
-                  <TruncatedText text={request.RequestedByName ?? "Unknown"} weight="semibold" size={500} maxWidth="220px" />
-                  <TruncatedText text={request.RequestedByJobTitle} fallback="—" size={200} color="#605E5C" maxWidth="220px" />
+                  <TruncatedText text={request.RequestedByName ?? "Unknown"} weight="semibold" size={400} maxWidth="260px" />
+                  <TruncatedText text={request.RequestedByJobTitle} fallback="—" size={200} color="#605E5C" maxWidth="260px" />
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                  <div style={{ background: "#EEF1FB", borderRadius: "6px", padding: "6px", color: "#5B5FC7", flexShrink: 0 }}>
+                  <div style={{ background: "#EFF6FF", borderRadius: "6px", padding: "6px", color: "#007ED5", flexShrink: 0 }}>
                     <MailRegular />
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <Text size={100} style={{ color: "#605E5C", display: "block" }}>
                       Email
                     </Text>
-                    <TruncatedText text={request.RequestedByMail} fallback="-" size={200} weight="medium" maxWidth="200px" />
+                    <Text size={200} weight="medium" style={{ color: "#1E293B" }}>
+                      {request.RequestedByMail || "-"}
+                    </Text>
                   </div>
                 </div>
                 {request.RequestedByDepartment && (
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                    <div style={{ background: "#F3E9FB", borderRadius: "6px", padding: "6px", color: "#8764B8", flexShrink: 0 }}>
+                    <div style={{ background: "#EFF6FF", borderRadius: "6px", padding: "6px", color: "#007ED5", flexShrink: 0 }}>
                       <BuildingRegular />
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <Text size={100} style={{ color: "#605E5C", display: "block" }}>
                         Group
                       </Text>
-                      <TruncatedText text={request.RequestedByDepartment} size={200} weight="medium" maxWidth="160px" />
+                      <Text size={200} weight="medium" style={{ color: "#1E293B" }}>
+                        {request.RequestedByDepartment}
+                      </Text>
                     </div>
                   </div>
                 )}
+                <Badge appearance="tint" color={REQUEST_STATUS_COLOR[request.OverallStatus]} size="medium">
+                  {REQUEST_STATUS_LABEL[request.OverallStatus]}
+                </Badge>
               </div>
-              <Badge appearance="tint" color={REQUEST_STATUS_COLOR[request.OverallStatus]} size="large">
-                {REQUEST_STATUS_LABEL[request.OverallStatus]}
-              </Badge>
             </div>
 
             {request.IsAdminOverride && (
               <div
                 style={{
-                  marginTop: "16px",
-                  padding: "10px 12px",
-                  borderRadius: "6px",
+                  marginTop: "14px",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
                   background: "#FFF4CE",
                   border: "1px solid #F2C811",
                 }}
@@ -575,64 +750,75 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
               </div>
             )}
 
-            {/* Two-column layout: details (left) + decision/response (right) */}
+            {/* Split Info (~65%) + Decision (~35%) layout */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 360px",
-                gap: "28px",
-                marginTop: "20px",
+                gridTemplateColumns: "minmax(0, 1.65fr) minmax(360px, 1fr)",
+                gap: "24px",
+                marginTop: "18px",
                 alignItems: "start",
               }}
             >
-              {/* Left column */}
-              <div>
-                <Text size={400} weight="semibold">
-                  Asset Request Details
-                </Text>
-                <SectionTitle>Requested Asset</SectionTitle>
-                <Text size={300} style={{ color: "#1E293B", fontWeight: 500 }}>
-                  {request.AssetType || (request as any).Category || (request as any).CategoryName || "General IT Asset"}
-                </Text>
-                <SectionTitle>Purpose of Request</SectionTitle>
-                <Text size={300} style={{ display: "block", whiteSpace: "pre-wrap", color: "#334155" }}>
-                  {request.PurposeOfRequest || (request as any).Description || "Standard request"}
-                </Text>
+              {/* Asset Details — card grouped */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
+                {/* Requested Asset */}
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "8px" }}>Requested Asset</div>
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "12px 16px", fontSize: "13.5px", color: "#1E293B", fontWeight: 500 }}>
+                    {request.AssetType || (request as any).Category || (request as any).CategoryName || "General IT Asset"}
+                  </div>
+                </div>
+
+                {/* Purpose of Request */}
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "8px" }}>Purpose of Request</div>
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "12px 16px", fontSize: "13.5px", color: "#334155", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {request.PurposeOfRequest || (request as any).Description || "Standard request"}
+                  </div>
+                </div>
+
+                {/* Requested Specifications */}
                 {componentSpecs.length > 0 && (
-                  <>
-                    <SectionTitle>Requested Specifications</SectionTitle>
-                    {componentSpecs.map((spec) => (
-                      <InfoRow key={spec.ComponentID} label={spec.ComponentName} value={spec.SpecValue ?? "-"} />
-                    ))}
-                  </>
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "10px" }}>Requested Specifications</div>
+                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "4px 16px" }}>
+                      {componentSpecs.map((spec) => (
+                        <InfoRow key={spec.ComponentID} label={spec.ComponentName} value={spec.SpecValue ?? "-"} />
+                      ))}
+                    </div>
+                  </div>
                 )}
 
-                <Divider style={{ margin: "18px 0" }} />
+                {/* Manager Approval */}
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "10px" }}>Manager Approval</div>
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "4px 16px" }}>
+                    <InfoRow label="Assigned Manager" value={request.AssignedManagerName ?? "-"} />
+                    <InfoRow label="Status" value={request.ManagerApprovalStatus} />
+                    <InfoRow label="Decided By" value={request.ApprovedManagerName ?? "-"} />
+                    <InfoRow label="Decision Date" value={formatDateTime(request.ManagerApprovedDate)} />
+                    {request.ManagerApprovedReason && <InfoRow label="Reason" value={request.ManagerApprovedReason} />}
+                  </div>
+                </div>
 
-                <Text size={400} weight="semibold">
-                  Manager Approval
-                </Text>
-                <InfoRow label="Assigned Manager" value={request.AssignedManagerName ?? "-"} />
-                <InfoRow label="Status" value={request.ManagerApprovalStatus} />
-                <InfoRow label="Decided By" value={request.ApprovedManagerName ?? "-"} />
-                <InfoRow label="Decision Date" value={formatDateTime(request.ManagerApprovedDate)} />
-                {request.ManagerApprovedReason && <InfoRow label="Reason" value={request.ManagerApprovedReason} />}
+                {/* Admin Approval */}
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "10px" }}>Admin Approval</div>
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "4px 16px" }}>
+                    <InfoRow label="Assigned Admin(s)" value={request.AssignedAdminApproverName ?? "-"} />
+                    <InfoRow label="Status" value={request.AdminApprovalStatus} />
+                    <InfoRow label="Decided By" value={request.ApprovedAdminName ?? "-"} />
+                    <InfoRow label="Decision Date" value={formatDateTime(request.AdminApprovedDate)} />
+                    {request.AdminApprovedReason && <InfoRow label="Reason" value={request.AdminApprovedReason} />}
+                    {request.AssignedAssetName && (
+                      <InfoRow label="Asset Issued" value={`${request.AssignedAssetName} (${request.AssignedAssetTagID})`} />
+                    )}
+                    <InfoRow label="Override Used" value={request.IsAdminOverride ? "Yes" : "No"} />
+                  </div>
+                </div>
 
-                <Divider style={{ margin: "18px 0" }} />
-
-                <Text size={400} weight="semibold">
-                  Admin Approval
-                </Text>
-                <InfoRow label="Assigned Admin(s)" value={request.AssignedAdminApproverName ?? "-"} />
-                <InfoRow label="Status" value={request.AdminApprovalStatus} />
-                <InfoRow label="Decided By" value={request.ApprovedAdminName ?? "-"} />
-                <InfoRow label="Decision Date" value={formatDateTime(request.AdminApprovedDate)} />
-                {request.AdminApprovedReason && <InfoRow label="Reason" value={request.AdminApprovedReason} />}
-                {request.AssignedAssetName && (
-                  <InfoRow label="Asset Issued" value={`${request.AssignedAssetName} (${request.AssignedAssetTagID})`} />
-                )}
-                <InfoRow label="Override Used" value={request.IsAdminOverride ? "Yes" : "No"} />
               </div>
 
               {/* Right column — Re-progress History (if any) + Make Decision / Resubmit / Status */}
@@ -713,60 +899,217 @@ const AssetRequestDetailsPanel: React.FC<AssetRequestDetailsPanelProps> = ({
                     </>
                   )
                 ) : (
-                  <>
-                    <Text size={400} weight="semibold" style={{ display: "block", marginBottom: "12px" }}>
-                      {isActionable ? "Make Decision" : "Decision"}
-                    </Text>
+                  <div
+                    style={{
+                      background: "#F8FAFC",
+                      border: "1px solid #E2E8F0",
+                      borderRadius: "16px",
+                      padding: "20px 22px",
+                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "16px",
+                    }}
+                  >
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: "10px",
+                            background: isActionable ? "#EEF6FF" : "#F1F5F9",
+                            color: isActionable ? "#007ED5" : "#64748B",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 19,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <ShieldCheckmarkRegular />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A", lineHeight: 1.2 }}>
+                            {isActionable ? "Make Decision" : "Decision Record"}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
+                            {isActionable
+                              ? role === "admin"
+                                ? "Allocate equipment & resolve request"
+                                : "Review & approve request"
+                              : "Official determination summary"}
+                          </div>
+                        </div>
+                      </div>
+                      {isActionable && (
+                        <span
+                          style={{
+                            background: "#FEF3C7",
+                            color: "#B45309",
+                            border: "1px solid #FDE68A",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "3px 10px",
+                            borderRadius: 999,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.4px",
+                          }}
+                        >
+                          Action Required
+                        </span>
+                      )}
+                    </div>
 
                     {!isActionable ? (
-                      <div style={{ border: "1px solid #E1DFDD", borderRadius: "8px", padding: "14px" }}>{renderDecisionSummary()}</div>
+                      renderDecisionSummary()
                     ) : (
                       <>
                         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                           {options.map((opt) => (
-                            <OptionCard key={opt.kind} def={opt} selected={selected === opt.kind} onClick={() => handleSelect(opt.kind)}>
+                            <OptionCard
+                              key={opt.kind}
+                              def={opt}
+                              selected={selected === opt.kind}
+                              onClick={() => handleSelect(opt.kind)}
+                            >
                               {role === "admin" && (opt.kind === "Approve" || opt.kind === "Override") && (
-                                <Dropdown
-                                  placeholder="Choose an available asset"
-                                  mountNode={mountNode}
-                                  value={availableAssets.find((a) => a.ID === selectedAssetId)?.AssetName ?? ""}
-                                  onOptionSelect={(_, d) => setSelectedAssetId(d.optionValue ?? null)}
-                                >
-                                  {availableAssets.length === 0 ? (
-                                    <Option key="none" value="" disabled>
-                                      No in-stock assets available for this category
-                                    </Option>
-                                  ) : (
-                                    availableAssets.map((asset) => (
-                                      <Option key={asset.ID} value={asset.ID} text={asset.AssetName}>
-                                        {asset.AssetName} ({asset.AssetTagID})
+                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#065F46", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                      Assign From Inventory
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: "11px",
+                                        fontWeight: 600,
+                                        background: availableAssets.length > 0 ? "#DCFCE7" : "#FEE2E2",
+                                        color: availableAssets.length > 0 ? "#15803D" : "#B91C1C",
+                                        padding: "2px 8px",
+                                        borderRadius: 999,
+                                      }}
+                                    >
+                                      {availableAssets.length} In Stock
+                                    </span>
+                                  </div>
+
+                                  <Dropdown
+                                    placeholder="Choose an available asset..."
+                                    mountNode={mountNode}
+                                    value={
+                                      availableAssets.find((a) => a.ID === selectedAssetId)
+                                        ? `${availableAssets.find((a) => a.ID === selectedAssetId)?.AssetName} (${availableAssets.find((a) => a.ID === selectedAssetId)?.AssetTagID})`
+                                        : ""
+                                    }
+                                    onOptionSelect={(_, d) => setSelectedAssetId(d.optionValue ?? null)}
+                                    style={{ width: "100%" }}
+                                  >
+                                    {availableAssets.length === 0 ? (
+                                      <Option key="none" value="" disabled>
+                                        No in-stock assets available for this category
                                       </Option>
-                                    ))
+                                    ) : (
+                                      availableAssets.map((asset) => (
+                                        <Option key={asset.ID} value={asset.ID} text={`${asset.AssetName} (${asset.AssetTagID})`}>
+                                          {asset.AssetName} · {asset.AssetTagID}
+                                        </Option>
+                                      ))
+                                    )}
+                                  </Dropdown>
+
+                                  {selectedAssetId && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11.5px", color: "#059669", fontWeight: 500 }}>
+                                      <CheckmarkCircleRegular style={{ fontSize: 14 }} />
+                                      <span>Hardware selected and ready for dispatch</span>
+                                    </div>
                                   )}
-                                </Dropdown>
+                                </div>
                               )}
                             </OptionCard>
                           ))}
                         </div>
 
                         {selected && (
-                          <Field
-                            label={selected === "Reject" ? "Reason for rejection" : selected === "Reprogress" ? "What information is needed?" : "Notes (optional)"}
-                            required={reasonRequired}
-                            style={{ marginTop: "14px" }}
-                          >
-                            <Textarea value={reason} onChange={(_, d) => setReason(d.value)} rows={4} />
-                          </Field>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+                            <label style={{ fontSize: "12.5px", fontWeight: 600, color: "#334155" }}>
+                              {selected === "Reject"
+                                ? "Reason for Rejection *"
+                                : selected === "Reprogress"
+                                ? "Information Needed from Employee *"
+                                : "Decision Notes & Dispatch Instructions"}
+                            </label>
+                            <Textarea
+                              placeholder={
+                                selected === "Reject"
+                                  ? "Provide a formal reason for declining this request..."
+                                  : selected === "Reprogress"
+                                  ? "Specify what details or specifications are required..."
+                                  : "Optional delivery notes or configuration instructions..."
+                              }
+                              value={reason}
+                              onChange={(_, d) => setReason(d.value)}
+                              rows={3}
+                              style={{ width: "100%", borderRadius: "8px" }}
+                            />
+                          </div>
                         )}
 
-                        <Divider style={{ margin: "16px 0" }} />
+                        <Divider style={{ margin: "4px 0" }} />
 
-                        <Button appearance="primary" style={{ width: "100%" }} disabled={!canSubmit || submitting} onClick={handleSubmit}>
-                          {submitting ? <Spinner size="tiny" /> : "Submit Decision"}
+                        <Button
+                          appearance="primary"
+                          style={{
+                            width: "100%",
+                            height: "44px",
+                            borderRadius: "25px",
+                            fontWeight: 700,
+                            fontSize: "14px",
+                            background: !selected
+                              ? "#94A3B8"
+                              : selected === "Approve"
+                              ? "#059669"
+                              : selected === "Override"
+                              ? "#007ED5"
+                              : selected === "Reprogress"
+                              ? "#D97706"
+                              : "#DC2626",
+                            borderColor: "transparent",
+                            color: "#FFFFFF",
+                            boxShadow: selected ? "0 4px 14px rgba(0, 0, 0, 0.12)" : "none",
+                            transition: "all 0.15s ease",
+                            cursor: canSubmit ? "pointer" : "not-allowed",
+                          }}
+                          disabled={!canSubmit || submitting}
+                          onClick={handleSubmit}
+                        >
+                          {submitting ? (
+                            <Spinner size="tiny" />
+                          ) : !selected ? (
+                            "Select a Decision Above"
+                          ) : selected === "Approve" ? (
+                            "Confirm & Issue Asset"
+                          ) : selected === "Override" ? (
+                            "Override & Issue Asset"
+                          ) : selected === "Reprogress" ? (
+                            "Send Inquiry to Employee"
+                          ) : (
+                            "Confirm Rejection"
+                          )}
                         </Button>
+
+                        {!canSubmit && selected && (
+                          <div style={{ fontSize: "11.5px", color: "#DC2626", textAlign: "center", marginTop: "-4px" }}>
+                            {selected === "Approve" || selected === "Override"
+                              ? "Please select an available asset to issue."
+                              : reasonRequired && !reason.trim()
+                              ? "Please enter a reason to proceed."
+                              : ""}
+                          </div>
+                        )}
                       </>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>

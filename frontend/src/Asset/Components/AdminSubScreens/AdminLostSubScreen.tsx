@@ -43,6 +43,7 @@ import {
   getAvailableAssetsForCategory,
   AvailableAssetOption,
 } from "../../Services/AssetInventoryService";
+import LostIncidentDetailsPanel from "../LostIncidentDetailsPanel";
 
 const PAGE_SIZE = 8;
 
@@ -107,6 +108,15 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
   const [availableAssets, setAvailableAssets] = useState<AvailableAssetOption[]>([]);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
+
+  // Incident drawer state
+  const [selectedIncidentRequest, setSelectedIncidentRequest] = useState<AssetLostRequestRecord | null>(null);
+  const [incidentDrawerOpen, setIncidentDrawerOpen] = useState(false);
+
+  const handleOpenIncidentSidebar = (r: AssetLostRequestRecord) => {
+    setSelectedIncidentRequest(r);
+    setIncidentDrawerOpen(true);
+  };
 
   // Tab count calculations
   const counts = useMemo(() => {
@@ -671,36 +681,27 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
                       </div>
                     </div>
 
-                    <div>
-                      <button
+                    <button
                         type="button"
-                        onClick={() => loadItems(r.ID)}
+                        onClick={() => handleOpenIncidentSidebar(r)}
                         style={{
-                          background: isPending ? "#DC2626" : "#FFFFFF",
-                          border: isPending ? "none" : "1.5px solid #DC2626",
-                          borderRadius: "999px",
-                          padding: "7px 20px",
+                          borderRadius: "20px",
+                          padding: "8px 22px",
                           fontSize: "13px",
                           fontWeight: 600,
-                          color: isPending ? "#FFFFFF" : "#DC2626",
+                          border: "none",
+                          background: "#007ED5",
+                          color: "#FFFFFF",
                           cursor: "pointer",
                           transition: "all 0.15s ease",
-                          boxShadow: isPending ? "0 2px 6px rgba(220, 38, 38, 0.25)" : "none",
+                          boxShadow: "0 2px 6px rgba(0, 126, 213, 0.25)",
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "6px",
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.opacity = "0.9";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.opacity = "1";
-                        }}
                       >
-                        <span>{isExpanded ? "Hide Incident Assets" : "Manage Incident Assets"}</span>
-                        {isExpanded ? <ChevronUpRegular /> : <ChevronDownRegular />}
+                        <span>Manage Incident Assets</span>
                       </button>
-                    </div>
                   </div>
 
                   {/* Expandable Incident Items Section */}
@@ -928,24 +929,20 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
                     <td style={{ padding: "14px 18px", textAlign: "right" }}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setViewMode("cards");
-                          loadItems(r.ID);
-                        }}
+                        onClick={() => handleOpenIncidentSidebar(r)}
                         style={{
-                          background: "#FFFFFF",
-                          border: "1px solid #CBD5E1",
-                          borderRadius: "8px",
-                          padding: "6px 14px",
+                          background: "#007ED5",
+                          color: "#FFFFFF",
+                          border: "none",
+                          borderRadius: "20px",
+                          padding: "6px 16px",
                           fontSize: "12.5px",
                           fontWeight: 600,
-                          color: "#DC2626",
                           cursor: "pointer",
+                          boxShadow: "0 2px 6px rgba(0, 126, 213, 0.2)",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "#FFFFFF")}
                       >
-                        Manage
+                        Manage Incident
                       </button>
                     </td>
                   </tr>
@@ -1007,6 +1004,14 @@ export const AdminLostSubScreen: React.FC<AdminLostSubScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Dedicated Lost Incident Details Sidebar */}
+      <LostIncidentDetailsPanel
+        open={incidentDrawerOpen}
+        onOpenChange={setIncidentDrawerOpen}
+        request={selectedIncidentRequest}
+        onActionComplete={onRefresh}
+      />
     </div>
   );
 };

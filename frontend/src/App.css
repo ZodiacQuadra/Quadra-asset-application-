@@ -24,6 +24,26 @@
   100% { background-position: -200% 0; }
 }
 
+/* Quadra Design System — 25px Corner Radius Standard */
+.fui-Button,
+button.fui-Button,
+.quadra-btn,
+.quadra-pill-btn,
+.quadra-button {
+  border-radius: 25px !important;
+}
+
+.asset-topbar-search-box,
+.asset-topbar-scope-btn {
+  border-radius: 25px !important;
+}
+
+/* Quadra Global Search Bars */
+.quadra-search-bar,
+.quadra-search-input {
+  border-radius: 25px !important;
+}
+
 /* Quadra People Signature Design System & Shell */
 .asset-app-root {
   height: 100vh;
@@ -794,5 +814,30 @@ body > div[class*="fui-FluentProvider"],
 .quadra-pill-toggle-lg .quadra-pill-toggle-item {
   padding: 10px 28px;
   font-size: 15px;
+}
+
+/* ==========================================================================
+   Quadra Design System Standard: Universal 25px Corner Radius
+   Enforces 25px border radius on all buttons, search bars, and pills
+   ========================================================================== */
+.fui-Button,
+button.fui-Button,
+.fui-Button--appearance-primary,
+.fui-Button--appearance-secondary,
+.fui-Button--appearance-outline,
+.fui-Button--appearance-subtle,
+.quadra-btn,
+.quadra-pill-btn,
+.quadra-action-btn,
+.asset-topbar-search-box,
+.asset-topbar-scope-btn,
+.quadra-search-bar {
+  border-radius: 25px !important;
+}
+
+.asset-topbar-search-box input,
+.quadra-search-bar input,
+.asset-search-input {
+  border-radius: 25px !important;
 }
 
